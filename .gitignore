@@ -1,0 +1,22 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Generated audio
+outputs/
+
+# Model and download caches
+.tts_voice_model_cache/
+.model_compare_cache/
+.model_vieneu_cache/
+
+# Local environment and logs
+.env
+.env.*
+!.env.example
+*.log
