@@ -150,8 +150,8 @@ class SynthesisRequest(BaseModel):
     text: str
     voice_id: str = "van_thanh_tri"
     speed: float = 1.0
-    temperature: float = 0.8
-    pause_style: str = "natural"
+    temperature: Any = "default"
+    pause_style: str = "default"
 
 
 @app.get("/health")
@@ -282,16 +282,19 @@ def synthesize_speech(req: SynthesisRequest, background_tasks: BackgroundTasks):
     except (TypeError, ValueError) as exc:
         raise HTTPException(status_code=400, detail="speed phải là số thực hợp lệ.") from exc
 
-    try:
-        temperature = float(req.temperature)
-        temperature = max(0.3, min(1.2, temperature))
-    except (TypeError, ValueError):
-        temperature = 0.8
+    if req.temperature in [None, "default", ""]:
+        temperature = "default"
+    else:
+        try:
+            temperature = float(req.temperature)
+            temperature = max(0.3, min(1.2, temperature))
+        except (TypeError, ValueError):
+            temperature = "default"
 
-    pause_style = str(req.pause_style).lower() if req.pause_style else "natural"
-    valid_pause_styles = ["natural", "relaxed", "expressive", "compact", "dramatic", "presentation", "rapid"]
+    pause_style = str(req.pause_style).lower() if req.pause_style else "default"
+    valid_pause_styles = ["default", "natural", "relaxed", "expressive", "compact", "dramatic", "presentation", "rapid"]
     if pause_style not in valid_pause_styles:
-        pause_style = "natural"
+        pause_style = "default"
 
     voice_info = all_voices[req.voice_id]
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -369,16 +372,19 @@ def synthesize_preview_snippet(req: SynthesisRequest, background_tasks: Backgrou
     except (TypeError, ValueError):
         speed = 1.0
 
-    try:
-        temperature = float(req.temperature)
-        temperature = max(0.3, min(1.2, temperature))
-    except (TypeError, ValueError):
-        temperature = 0.8
+    if req.temperature in [None, "default", ""]:
+        temperature = "default"
+    else:
+        try:
+            temperature = float(req.temperature)
+            temperature = max(0.3, min(1.2, temperature))
+        except (TypeError, ValueError):
+            temperature = "default"
 
-    pause_style = str(req.pause_style).lower() if req.pause_style else "natural"
-    valid_pause_styles = ["natural", "relaxed", "expressive", "compact", "dramatic", "presentation", "rapid"]
+    pause_style = str(req.pause_style).lower() if req.pause_style else "default"
+    valid_pause_styles = ["default", "natural", "relaxed", "expressive", "compact", "dramatic", "presentation", "rapid"]
     if pause_style not in valid_pause_styles:
-        pause_style = "natural"
+        pause_style = "default"
 
     voice_info = all_voices[req.voice_id]
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

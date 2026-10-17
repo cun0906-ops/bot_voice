@@ -12,15 +12,16 @@ os.environ.setdefault("HF_HOME", str(MODEL_CACHE_DIR))
 from vieneu import Vieneu
 import vieneu_utils.core_utils as core_utils
 
-# Các cấu hình khoảng nghỉ tự nhiên theo ngữ cảnh
-PAUSE_PROFILES = {
-    "natural": {"para": 0.70, "sentence": 0.50, "minor": 0.30},       # Mặc định: Tự nhiên, đàm thoại chuẩn
-    "relaxed": {"para": 0.95, "sentence": 0.75, "minor": 0.45},       # Thư thả, sâu lắng (sách nói, podcast)
-    "expressive": {"para": 0.85, "sentence": 0.60, "minor": 0.35},    # Diễn cảm, rõ ràng từng vế (kể chuyện)
-    "compact": {"para": 0.45, "sentence": 0.30, "minor": 0.18},       # Nhanh gọn, liền mạch (tin tức, video ngắn)
-    "dramatic": {"para": 1.25, "sentence": 0.95, "minor": 0.55},      # Lắng đọng, kịch tính (phim ảnh, tự sự tâm trạng)
-    "presentation": {"para": 0.75, "sentence": 0.55, "minor": 0.38},  # Dõng dạc, rành mạch (thuyết trình, bài giảng)
-    "rapid": {"para": 0.35, "sentence": 0.22, "minor": 0.12},         # Nhịp dồn, siêu tốc (quảng cáo xả hàng, tin nóng)
+# Các cấu hình ngắt nghỉ và ranh giới câu (tương thích trực tiếp với silence_p và max_chars của VieNeu v3 Turbo)
+PAUSE_STYLE_CONFIG = {
+    "default": {"silence_p": 0.15, "max_chars": 256},      # Mặc định: Giữ nguyên vẹn 100% nhịp điệu gốc của model
+    "natural": {"silence_p": 0.15, "max_chars": 256},      # Tương đương default
+    "relaxed": {"silence_p": 0.40, "max_chars": 130},      # Thư thả, sâu lắng (sách nói, podcast đêm)
+    "expressive": {"silence_p": 0.30, "max_chars": 120},   # Diễn cảm, rõ vế (kể chuyện)
+    "presentation": {"silence_p": 0.25, "max_chars": 140}, # Dõng dạc, rành mạch (thuyết trình, bài giảng)
+    "dramatic": {"silence_p": 0.55, "max_chars": 110},     # Lắng đọng, kịch tính (phim ảnh, tâm trạng)
+    "compact": {"silence_p": 0.08, "max_chars": 256},      # Nhanh, liền mạch (tin tức, video ngắn)
+    "rapid": {"silence_p": 0.02, "max_chars": 300},        # Siêu tốc, nhịp dồn (quảng cáo xả hàng, tin nóng)
 }
 
 PAUSE_REGEX = re.compile(r"\[(?:ngh[iỉ]|pause):([0-9.]+)s?\]", re.IGNORECASE)
@@ -77,8 +78,10 @@ class VoiceCloner:
         voice_name: str,
         temperature: float,
         dynamic_max_frames: int,
+        silence_p: float = 0.15,
+        max_chars: int = 256,
     ) -> np.ndarray:
-        """Sinh audio cho một phân đoạn văn bản với ranh giới câu ngắt nghỉ tự nhiên (max_chars=130)."""
+        """Sinh audio cho một phân đoạn văn bản theo cấu hình ngắt nghỉ và độ biểu cảm."""
         clean_text = preprocess_natural_text(segment_text)
         if not clean_text:
             return np.array([], dtype=np.float32)
@@ -91,7 +94,8 @@ class VoiceCloner:
             top_p=0.95,
             repetition_penalty=1.2,
             max_new_frames=dynamic_max_frames,
-            max_chars=130,  # Chia nhỏ câu để luôn có khoảng nghỉ thở tự nhiên giữa các câu
+            max_chars=max_chars,
+            silence_p=silence_p,
         )
         return audio if audio is not None else np.array([], dtype=np.float32)
 
@@ -103,8 +107,8 @@ class VoiceCloner:
         ref_text: str = "",
         output_path: str = "output.wav",
         speed: float = 1.0,
-        temperature: float = 0.8,
-        pause_style: str = "natural",
+        temperature: Any = 0.8,
+        pause_style: str = "default",
     ) -> str:
         if not gen_text or not gen_text.strip():
             raise ValueError("Nội dung văn bản không được để trống.")
@@ -112,11 +116,11 @@ class VoiceCloner:
         output_file = Path(output_path)
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
-        with self._generation_lock:
-            # Cập nhật cấu hình ngắt nghỉ tự nhiên theo profile được chọn
-            profile = PAUSE_PROFILES.get(pause_style, PAUSE_PROFILES["natural"])
-            core_utils.V3_GAP_SILENCE.update(profile)
+        pause_config = PAUSE_STYLE_CONFIG.get(pause_style, PAUSE_STYLE_CONFIG["default"])
+        silence_p = pause_config["silence_p"]
+        max_chars = pause_config["max_chars"]
 
+        with self._generation_lock:
             # 1. Trường hợp sử dụng file âm thanh tham chiếu (Custom Voice Clone)
             if ref_audio_path:
                 reference_path = Path(ref_audio_path).resolve()
@@ -146,9 +150,15 @@ class VoiceCloner:
             word_count = len(gen_text.strip().split())
             dynamic_max_frames = max(450, min(3500, word_count * 45))
 
-            # Temperature chuẩn 0.75 - 0.85 giúp ngữ điệu trầm bổng, biểu cảm và có hồn
-            temp = float(temperature) if temperature is not None else 0.8
-            temp = max(0.3, min(1.2, temp))
+            # Độ biểu cảm: nếu là mặc định ("default" hoặc None) thì giữ nguyên 0.8 của model gốc
+            if temperature is None or temperature == "default":
+                temp = 0.8
+            else:
+                try:
+                    temp = float(temperature)
+                    temp = max(0.3, min(1.2, temp))
+                except (TypeError, ValueError):
+                    temp = 0.8
 
             # Xử lý các thẻ dừng chủ động [nghỉ:X s] hoặc [pause:X s] nếu có
             if PAUSE_REGEX.search(gen_text):
@@ -158,7 +168,10 @@ class VoiceCloner:
                     if i % 2 == 0:
                         # Phân đoạn chữ
                         if part.strip():
-                            seg_audio = self._infer_segment(part, voice_name, temp, dynamic_max_frames)
+                            seg_audio = self._infer_segment(
+                                part, voice_name, temp, dynamic_max_frames,
+                                silence_p=silence_p, max_chars=max_chars
+                            )
                             if len(seg_audio) > 0:
                                 audio_segments.append(seg_audio)
                     else:
@@ -176,7 +189,10 @@ class VoiceCloner:
                 audio = np.concatenate(audio_segments) if len(audio_segments) > 1 else audio_segments[0]
             else:
                 # Xử lý toàn văn với ngắt nghỉ tự nhiên
-                audio = self._infer_segment(gen_text, voice_name, temp, dynamic_max_frames)
+                audio = self._infer_segment(
+                    gen_text, voice_name, temp, dynamic_max_frames,
+                    silence_p=silence_p, max_chars=max_chars
+                )
                 if audio is None or len(audio) == 0:
                     raise RuntimeError("Mô hình không tạo được audio từ văn bản đã cung cấp.")
 
