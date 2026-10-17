@@ -327,9 +327,8 @@ async def clone_new_voice(
 
     clean_name = name.strip()
     safe_slug = re.sub(r"[^\w\-]+", "_", clean_name.lower()).strip("_")
-    voice_id = f"custom_{safe_slug}_{uuid.uuid4().hex[:6]}"
-
-    temp_path = CUSTOM_DIR / f"upload_{uuid.uuid4().hex[:6]}_{audio_file.filename}"
+    safe_filename = "".join(c if c.isalnum() or c in (".", "-", "_") else "_" for c in audio_file.filename)
+    temp_path = CUSTOM_DIR / f"upload_{uuid.uuid4().hex[:6]}_{safe_filename}"
     final_wav = CUSTOM_DIR / f"{voice_id}.wav"
 
     try:
@@ -341,7 +340,33 @@ async def clone_new_voice(
         # Chuyển đổi và chuẩn hóa thành file WAV 48kHz mono 16-bit
         import soundfile as sf
         import librosa
-        wav, sr = librosa.load(str(temp_path), sr=48000, mono=True)
+
+        try:
+            wav, sr = librosa.load(str(temp_path), sr=48000, mono=True)
+        except Exception as load_err:
+            # Fallback 1: Thử đọc trực tiếp bằng soundfile
+            try:
+                wav, sr = sf.read(str(temp_path), dtype="float32")
+                if getattr(wav, "ndim", 1) > 1:
+                    wav = wav.mean(axis=1)
+                if sr != 48000:
+                    wav = librosa.resample(wav, orig_sr=sr, target_sr=48000)
+            except Exception:
+                # Fallback 2: Thử đọc bằng pydub
+                try:
+                    from pydub import AudioSegment
+                    seg = AudioSegment.from_file(str(temp_path))
+                    seg = seg.set_frame_rate(48000).set_channels(1)
+                    buf = io.BytesIO()
+                    seg.export(buf, format="wav")
+                    buf.seek(0)
+                    wav, sr = sf.read(buf, dtype="float32")
+                except Exception:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Định dạng âm thanh chưa được hỗ trợ trên máy chủ ({str(load_err)}). Bạn hãy cập nhật trang web để trình duyệt tự động chuyển file sang chuẩn WAV.",
+                    )
+
         max_amp = float(np.max(np.abs(wav)))
         if max_amp > 1e-4:
             wav = wav * (0.95 / max_amp)

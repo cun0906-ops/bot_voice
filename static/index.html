@@ -357,14 +357,15 @@
             <div class="field">
               <div class="speed-head">
                 <label for="pitchRange">Cao độ giọng (Pitch)</label>
-                <span id="pitchValue" class="speed-value">0.0 (Mặc định - Gốc)</span>
+                <span id="pitchValue" class="speed-value">0.0 (Chuẩn - Trong trẻo)</span>
               </div>
               <input id="pitchRange" name="pitch" type="range" min="-3.0" max="3.0" step="0.5" value="0.0">
               <div class="range-labels">
                 <span>-3.0 (Trầm ấm)</span>
-                <span>0.0 (Gốc)</span>
+                <span>0.0 (Gốc trong trẻo)</span>
                 <span>+3.0 (Cao thanh)</span>
               </div>
+              <div style="margin-top:5px; font-size:11px; color:#8fa1ba;">Khuyên dùng 0.0 để giữ nguyên bản giọng gốc tròn vành rõ chữ nhất</div>
             </div>
 
             <!-- Hồn giọng / Biểu cảm -->
@@ -573,7 +574,7 @@
     const SAMPLE_TEMPLATES = {
       sales: {
         text: "Tưng bừng khuyến mãi! Giảm giá cực sốc 50% toàn bộ sản phẩm công nghệ từ ngày 15/10 đến hết tuần. Đặt hàng ngay hôm nay trên Zalo hoặc website để nhận ngay ưu đãi freeship toàn quốc. Hotline tư vấn miễn phí 1900 6868!",
-        speed: 1.05, pitch: 0.5, temp: "0.95", pause: "compact"
+        speed: 1.05, pitch: 0.0, temp: "default", pause: "compact"
       },
       news: {
         text: "Kính chào quý vị và các bạn. Mời quý vị theo dõi bản tin sáng nay trên kênh Thời sự 24/7. Sáng ngày 17/10, các chuyên gia công nghệ đã công bố giải pháp trí tuệ nhân tạo thế hệ mới, hỗ trợ tối ưu hóa quy trình sản xuất và vận hành doanh nghiệp.",
@@ -581,11 +582,11 @@
       },
       podcast: {
         text: "Đêm đã về khuya, không gian trở nên tĩnh lặng. [thở dài] Hãy cùng nhắm mắt lại, thả lỏng tâm trí và lắng nghe câu chuyện nhẹ nhàng sau đây. Những kỷ niệm đẹp đẽ sẽ luôn là ngọn đèn soi sáng cho tâm hồn bạn...",
-        speed: 0.95, pitch: -0.5, temp: "0.85", pause: "relaxed"
+        speed: 0.95, pitch: 0.0, temp: "0.85", pause: "relaxed"
       },
       cskh: {
         text: "Cảm ơn quý khách đã gọi đến tổng đài Chăm sóc khách hàng An Đại Phát. Vui lòng bấm phím 1 để gặp bộ phận kinh doanh, bấm phím 2 để được hỗ trợ kỹ thuật, hoặc giữ máy để gặp tổng đài viên.",
-        speed: 1.0, pitch: 0.0, temp: "0.50", pause: "presentation"
+        speed: 1.0, pitch: 0.0, temp: "default", pause: "presentation"
       },
       course: {
         text: "Chào mừng các bạn đến với khóa học Trí tuệ nhân tạo thực chiến. Bài học số một hôm nay gồm ba phần: [nghỉ:0.5s] Thứ nhất, làm quen với mô hình ngôn ngữ lớn. Thứ hai, kỹ thuật thiết kế câu lệnh chuẩn. Và thứ ba là thực hành trực tiếp.",
@@ -593,7 +594,7 @@
       },
       tiktok: {
         text: "Top 3 ứng dụng AI đỉnh nhất năm 2026 mà bạn nhất định phải thử ngay hôm nay! Số một: công cụ biến ý tưởng thành video chỉ trong 5 giây. Đừng quên thả tim và theo dõi kênh để không bỏ lỡ mẹo hay nhé!",
-        speed: 1.10, pitch: 0.5, temp: "0.95", pause: "rapid"
+        speed: 1.10, pitch: 0.0, temp: "default", pause: "rapid"
       }
     };
 
@@ -896,7 +897,7 @@
     pitchRange.addEventListener("input", () => {
       const val = parseFloat(pitchRange.value);
       let desc = "";
-      if (val === 0.0) desc = " (Mặc định - Gốc)";
+      if (val === 0.0) desc = " (Chuẩn - Trong trẻo nhất)";
       else if (val <= -2.0) desc = " (Rất trầm)";
       else if (val < 0.0) desc = " (Trầm ấm)";
       else if (val >= 2.0) desc = " (Rất cao, thanh)";
@@ -1116,6 +1117,82 @@
       }
     });
 
+    function audioBufferToWav(buffer, targetSampleRate = 48000) {
+      const sampleRate = targetSampleRate;
+      let channelData;
+      if (buffer.numberOfChannels > 1) {
+        const left = buffer.getChannelData(0);
+        const right = buffer.getChannelData(1);
+        channelData = new Float32Array(left.length);
+        for (let i = 0; i < left.length; i++) {
+          channelData[i] = (left[i] + right[i]) * 0.5;
+        }
+      } else {
+        channelData = buffer.getChannelData(0);
+      }
+
+      let resampledData;
+      if (buffer.sampleRate === sampleRate) {
+        resampledData = channelData;
+      } else {
+        const ratio = buffer.sampleRate / sampleRate;
+        const newLength = Math.round(channelData.length / ratio);
+        resampledData = new Float32Array(newLength);
+        for (let i = 0; i < newLength; i++) {
+          const srcIdx = i * ratio;
+          const idx1 = Math.floor(srcIdx);
+          const idx2 = Math.min(idx1 + 1, channelData.length - 1);
+          const frac = srcIdx - idx1;
+          resampledData[i] = channelData[idx1] * (1 - frac) + channelData[idx2] * frac;
+        }
+      }
+
+      let maxVal = 0;
+      for (let i = 0; i < resampledData.length; i++) {
+        const abs = Math.abs(resampledData[i]);
+        if (abs > maxVal) maxVal = abs;
+      }
+      if (maxVal > 1e-4) {
+        const scale = 0.95 / maxVal;
+        for (let i = 0; i < resampledData.length; i++) {
+          resampledData[i] *= scale;
+        }
+      }
+
+      const wavLength = 44 + resampledData.length * 2;
+      const arrayBuffer = new ArrayBuffer(wavLength);
+      const view = new DataView(arrayBuffer);
+
+      function writeString(offset, string) {
+        for (let i = 0; i < string.length; i++) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
+      }
+
+      writeString(0, 'RIFF');
+      view.setUint32(4, 36 + resampledData.length * 2, true);
+      writeString(8, 'WAVE');
+      writeString(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      writeString(36, 'data');
+      view.setUint32(40, resampledData.length * 2, true);
+
+      let offset = 44;
+      for (let i = 0; i < resampledData.length; i++) {
+        let s = Math.max(-1, Math.min(1, resampledData[i]));
+        view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        offset += 2;
+      }
+
+      return new Blob([arrayBuffer], { type: 'audio/wav' });
+    }
+
     cloneForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const file = cloneAudioFile.files[0];
@@ -1126,11 +1203,25 @@
       }
 
       startCloneBtn.disabled = true;
-      startCloneBtn.textContent = "⏳ Đang phân tích & nhân bản giọng...";
+      startCloneBtn.textContent = "⏳ Đang chuyển đổi định dạng âm thanh...";
       cloneNotice.className = "notice";
 
+      let finalAudioBlob = file;
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const arrayBuf = await file.arrayBuffer();
+        const decoded = await audioCtx.decodeAudioData(arrayBuf);
+        finalAudioBlob = audioBufferToWav(decoded, 48000);
+        await audioCtx.close();
+      } catch (convErr) {
+        console.warn("Chuyển đổi âm thanh qua Web Audio API bỏ qua, gửi file gốc:", convErr);
+      }
+
+      startCloneBtn.textContent = "⏳ Đang phân tích & nhân bản giọng...";
+
+      const safeBaseName = file.name.replace(/\.[^/.]+$/, "").replace(/[^\w\-]+/g, "_") || "voice";
       const formData = new FormData();
-      formData.append("audio_file", file);
+      formData.append("audio_file", finalAudioBlob, `${safeBaseName}.wav`);
       formData.append("name", document.getElementById("cloneName").value.trim());
       formData.append("gender", document.getElementById("cloneGender").value);
       formData.append("region", document.getElementById("cloneRegion").value);

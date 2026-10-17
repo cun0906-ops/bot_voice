@@ -200,6 +200,105 @@ def split_text_into_chunks(text: str, max_words: int = 35) -> List[str]:
     return chunks if chunks else [clean]
 
 
+def wsola_time_stretch(audio: np.ndarray, rate: float, sr: int = 48000) -> np.ndarray:
+    """Co giãn thời gian bằng WSOLA trong miền thời gian (Waveform Similarity Overlap-Add).
+    Khắc phục triệt để hiện tượng ồm ồm, méo tiếng hoặc vang hẫng của Phase Vocoder.
+    Giữ nguyên 100% âm sắc, formants và độ tròn vành rõ chữ của giọng AI.
+    """
+    if abs(rate - 1.0) < 0.02 or len(audio) == 0:
+        return audio
+
+    rate = float(max(0.65, min(1.75, rate)))
+    win_size = int(0.025 * sr)
+    if win_size % 2 != 0:
+        win_size += 1
+    syn_hop = win_size // 2
+    ana_hop = int(round(syn_hop * rate))
+    delta = int(0.007 * sr)
+
+    window = np.hanning(win_size).astype(np.float32)
+    total_samples = len(audio)
+
+    if total_samples < win_size + delta * 2:
+        return audio
+
+    est_out_len = int(total_samples / rate) + win_size * 2
+    out_audio = np.zeros(est_out_len, dtype=np.float32)
+    norm_window = np.zeros(est_out_len, dtype=np.float32)
+
+    # Khởi tạo frame đầu
+    out_audio[0:win_size] += audio[0:win_size] * window
+    norm_window[0:win_size] += window
+
+    out_pos = syn_hop
+    in_pos = ana_hop
+    prev_target_pos = syn_hop
+
+    from scipy.signal import correlate
+
+    while (in_pos + win_size + delta < total_samples) and (out_pos + win_size < est_out_len):
+        search_start = max(0, in_pos - delta)
+        search_end = min(total_samples, in_pos + delta + win_size)
+
+        if search_end - search_start < win_size:
+            chosen_seg = audio[in_pos : in_pos + win_size]
+            prev_target_pos = in_pos + syn_hop
+        else:
+            search_region = audio[search_start:search_end]
+            ref_seg = audio[prev_target_pos : prev_target_pos + win_size]
+
+            if len(ref_seg) == win_size and len(search_region) >= win_size:
+                corr = correlate(search_region, ref_seg, mode="valid")
+                best_idx = int(np.argmax(corr))
+                chosen_start = search_start + best_idx
+                chosen_seg = audio[chosen_start : chosen_start + win_size]
+                prev_target_pos = chosen_start + syn_hop
+            else:
+                chosen_seg = audio[in_pos : in_pos + win_size]
+                prev_target_pos = in_pos + syn_hop
+
+        out_audio[out_pos : out_pos + win_size] += chosen_seg * window
+        norm_window[out_pos : out_pos + win_size] += window
+
+        out_pos += syn_hop
+        in_pos += ana_hop
+
+    valid_len = out_pos + win_size
+    mask = norm_window[:valid_len] > 1e-4
+    out_audio[:valid_len][mask] /= norm_window[:valid_len][mask]
+
+    return out_audio[:valid_len]
+
+
+def clean_pitch_shift(audio: np.ndarray, n_steps: float, sr: int = 48000) -> np.ndarray:
+    """Dịch cao độ giọng nói mà KHÔNG gây méo tiếng hay ồm ồm như phase vocoder."""
+    if abs(n_steps) < 0.25 or len(audio) == 0:
+        return audio
+
+    n_steps = float(max(-3.5, min(3.5, n_steps)))
+    factor = 2.0 ** (n_steps / 12.0)
+
+    try:
+        import librosa
+        target_sr = int(round(sr / factor))
+        resampled = librosa.resample(audio, orig_sr=sr, target_sr=target_sr)
+        shifted = wsola_time_stretch(resampled, rate=factor, sr=sr)
+    except Exception as e:
+        print(f"⚠️ Không thể dịch cao độ giọng: {e}")
+        shifted = audio
+
+    # Khử dải ù trầm nếu hạ tông (loại bỏ tiếng ồm ở 80Hz - 250Hz)
+    if n_steps < 0 and len(shifted) > 0:
+        try:
+            from scipy.signal import butter, sosfilt
+            sos = butter(2, 80, btype="highpass", fs=sr, output="sos")
+            shifted = sosfilt(sos, shifted).astype(np.float32)
+        except Exception:
+            pass
+
+    return shifted
+
+
 class VoiceCloner:
     def __init__(self, threads: int = 4):
         self.device = "cpu (ONNX Runtime)"
@@ -434,46 +533,44 @@ class VoiceCloner:
                 if audio is None or len(audio) == 0:
                     raise RuntimeError("Mô hình không tạo được audio từ văn bản đã cung cấp.")
 
-            # 1. Điều chỉnh tốc độ đọc (speed)
+            # 1. Điều chỉnh tốc độ đọc (speed) bằng WSOLA miền thời gian (100% tròn tiếng, không bị ồm)
             try:
                 target_speed = float(speed)
             except (TypeError, ValueError):
                 target_speed = 1.0
 
-            if abs(target_speed - 1.0) >= 0.03:
-                clamped_speed = max(0.65, min(1.75, target_speed))
+            if abs(target_speed - 1.0) >= 0.02:
                 try:
-                    import librosa
-                    audio = librosa.effects.time_stretch(
-                        audio.astype(np.float32),
-                        rate=clamped_speed,
-                    )
+                    audio = wsola_time_stretch(audio, rate=target_speed, sr=self.sample_rate)
                 except Exception as stretch_err:
                     print(f"⚠️ Không thể co giãn tốc độ: {stretch_err}")
 
-            # 2. Điều chỉnh cao độ (pitch / n_steps: từ -3.0 đến +3.0 bán cung)
+            # 2. Điều chỉnh cao độ (pitch) bằng Resample + WSOLA (không dùng phase vocoder)
             try:
                 pitch_steps = float(pitch)
             except (TypeError, ValueError):
                 pitch_steps = 0.0
 
-            if abs(pitch_steps) >= 0.4:
-                clamped_pitch = max(-4.0, min(4.0, pitch_steps))
+            if abs(pitch_steps) >= 0.25:
                 try:
-                    import librosa
-                    audio = librosa.effects.pitch_shift(
-                        audio.astype(np.float32),
-                        sr=self.sample_rate,
-                        n_steps=clamped_pitch,
-                    )
+                    audio = clean_pitch_shift(audio, n_steps=pitch_steps, sr=self.sample_rate)
                 except Exception as pitch_err:
-                    print(f"⚠️ Không thể dịch cao độ giọng: {pitch_err}")
+                    print(f"⚠️ Không thể dịch cao độ: {pitch_err}")
 
-            # 3. Chuẩn hóa âm lượng tự động (Volume Peak Normalization -0.5 dBFS)
+            # 3. Khử tiếng ồm (de-boom), lọc DC offset & chuẩn hóa âm lượng chuẩn phát thanh
             if len(audio) > 0:
+                audio = audio - np.mean(audio)
+                try:
+                    from scipy.signal import butter, sosfilt
+                    # Highpass 65Hz khử sub-bass rumble, tiếng rung micro
+                    sos = butter(2, 65, btype="highpass", fs=self.sample_rate, output="sos")
+                    audio = sosfilt(sos, audio).astype(np.float32)
+                except Exception:
+                    pass
+
                 max_amp = float(np.max(np.abs(audio)))
                 if max_amp > 1e-4:
-                    target_peak = 0.94
+                    target_peak = 0.92
                     audio = audio * (target_peak / max_amp)
 
             self._tts.save(audio, output_file)
