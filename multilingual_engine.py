@@ -10,13 +10,13 @@ from typing import Any, Dict, List, Optional
 
 # Ensure edge-tts is installed
 try:
-    import edge_tts
+    import edge_tts  # type: ignore
 except ImportError:
     import subprocess
     try:
         print("📦 Đang tự động cài đặt thư viện edge-tts cho giọng đọc quốc tế...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", "edge-tts"])
-        import edge_tts
+        import edge_tts  # type: ignore
         print("✅ Đã cài đặt edge-tts thành công!")
     except Exception as exc:
         print(f"⚠️ Chưa thể cài đặt edge-tts tự động: {exc}")
