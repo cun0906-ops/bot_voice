@@ -10,5 +10,18 @@
     "audio_path": "voices/van_thanh_tri_short.wav",
     "ref_text": "Dạ, em là Vân ở bên công ty An Đại Phát ở Thanh Trì, Hà Nội chuyên mạ kẽm điện phân và nhúng nóng ạ.",
     "is_builtin": true
+  },
+  {
+    "id": "custom_maitu_15e8dc",
+    "name": "maitu",
+    "description": "Female · Bắc",
+    "gender": "female",
+    "region": "Bắc",
+    "category": "Giọng Clone Của Bạn",
+    "is_clone": true,
+    "audio_path": "D:\\bot_voice\\voices\\custom\\custom_maitu_15e8dc.wav",
+    "ref_text": "",
+    "is_builtin": false,
+    "created_at": "15:33 17/10/2026"
   }
 ]

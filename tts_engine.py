@@ -299,6 +299,120 @@ def clean_pitch_shift(audio: np.ndarray, n_steps: float, sr: int = 48000) -> np.
     return shifted
 
 
+def clean_special_characters(text: str) -> str:
+    """Tự động loại bỏ icon, emoji, ký tự lạ để AI không đọc thành tiếng rác."""
+    if not text:
+        return ""
+    # Bảo vệ các thẻ như [lấy hơi], [nghỉ:0.5s], [thở dài]
+    tags = []
+    def save_tag(m):
+        tags.append(m.group(0))
+        return f"___TAG_{len(tags)-1}___"
+
+    text = re.sub(r"\[(?:ngh[iỉ]|pause|thở|thở dài|lấy hơi|cười|hắng giọng|thì thầm|nghỉ ngắn)[^\]]*\]", save_tag, text, flags=re.IGNORECASE)
+
+    # Loại bỏ emoji unicode
+    emoji_pattern = re.compile(
+        "[\U00010000-\U0010ffff]|"
+        "[\u2600-\u26ff]|[\u2700-\u27bf]|[\u2300-\u23ff]|[\u2b50-\u2b55]|[\u203c-\u2049]|[\u25aa-\u25fe]",
+        flags=re.UNICODE
+    )
+    text = emoji_pattern.sub(" ", text)
+
+    # Loại bỏ các ký tự rác lạ (@, #, ^, &, *, ~, `, {, }, |, <, >, =)
+    text = re.sub(r"[@#^&*~`|{}<>=_\\]", " ", text)
+    # Rút gọn khoảng trắng
+    text = re.sub(r"[ \t]+", " ", text).strip()
+
+    # Khôi phục các thẻ
+    for i, tag in enumerate(tags):
+        text = text.replace(f"___TAG_{i}___", tag)
+
+    return text
+
+
+def format_srt_time(seconds: float) -> str:
+    """Đổi số giây thành định dạng timecode chuẩn SubRip SRT: HH:MM:SS,mmm"""
+    ms = int(round(seconds * 1000))
+    h = ms // 3600000
+    ms %= 3600000
+    m = ms // 60000
+    ms %= 60000
+    s = ms // 1000
+    ms %= 1000
+    return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+
+
+def build_srt_content(cues: List[Dict[str, Any]]) -> str:
+    """Tạo nội dung file .SRT chuẩn từ danh sách các câu kèm mốc thời gian."""
+    lines = []
+    for i, cue in enumerate(cues, 1):
+        start = format_srt_time(cue["start"])
+        end = format_srt_time(cue["end"])
+        text = cue["text"].strip()
+        # Loại bỏ các thẻ điều khiển nội bộ khỏi phụ đề hiển thị
+        clean_sub_text = re.sub(r"\[[^\]]+\]", "", text).strip()
+        if not clean_sub_text:
+            clean_sub_text = text
+        lines.append(f"{i}\n{start} --> {end}\n{clean_sub_text}\n")
+    return "\n".join(lines)
+
+
+def split_text_to_subtitles(text: str, max_chars: int = 200) -> List[Dict[str, Any]]:
+    """Chia văn bản thành các câu phụ đề ngắn gọn, tự nhiên theo câu cú và độ dài tối đa."""
+    clean = text.strip()
+    if not clean:
+        return []
+
+    # Chia theo dấu kết thúc câu (. ! ? … \n)
+    raw_sentences = re.split(r"(?<=[.!?…\n])\s+", clean)
+    cues_text = []
+
+    for s in raw_sentences:
+        s_clean = s.strip()
+        if not s_clean:
+            continue
+
+        # Nếu câu quá dài vượt max_chars, chia tiếp theo dấu phẩy / chấm phẩy
+        if len(s_clean) > max_chars:
+            sub_parts = re.split(r"(?<=[,;:])\s+", s_clean)
+            cur = []
+            cur_len = 0
+            for p in sub_parts:
+                p_len = len(p)
+                if cur_len > 0 and (cur_len + p_len > max_chars):
+                    cues_text.append(" ".join(cur))
+                    cur = [p]
+                    cur_len = p_len
+                else:
+                    cur.append(p)
+                    cur_len += p_len
+            if cur:
+                cues_text.append(" ".join(cur))
+        else:
+            cues_text.append(s_clean)
+
+    result = []
+    for item in cues_text:
+        trimmed = item.strip()
+        if not trimmed:
+            continue
+        pause_type = "sentence"
+        if trimmed.endswith((",", ";", ":")):
+            pause_type = "comma"
+        elif trimmed.endswith((".", "!", "?", "…")):
+            pause_type = "sentence"
+        else:
+            pause_type = "segment"
+
+        result.append({
+            "text": trimmed,
+            "pause_type": pause_type
+        })
+
+    return result
+
+
 class VoiceCloner:
     def __init__(self, threads: int = 4):
         self.device = "cpu (ONNX Runtime)"
@@ -435,18 +549,34 @@ class VoiceCloner:
         ref_audio_path: Optional[str] = None,
         ref_text: str = "",
         output_path: str = "output.wav",
+        output_srt_path: Optional[str] = None,
         speed: float = 1.0,
         pitch: float = 0.0,
+        stability: float = 50.0,
+        similarity: float = 75.0,
+        speaker_boost: bool = True,
         temperature: Any = "default",
         pause_style: str = "default",
+        comma_pause: float = 0.3,
+        sentence_pause: float = 0.5,
+        segment_pause: float = 0.3,
+        strip_special_chars: bool = False,
+        max_chars_per_line: int = 200,
         normalize_text: bool = True,
+        generate_srt: bool = True,
         custom_dict: Optional[Dict[str, str]] = None,
-    ) -> str:
+    ) -> Dict[str, Any]:
         if not gen_text or not gen_text.strip():
             raise ValueError("Nội dung văn bản không được để trống.")
 
+        if strip_special_chars:
+            gen_text = clean_special_characters(gen_text)
+
         output_file = Path(output_path)
         output_file.parent.mkdir(parents=True, exist_ok=True)
+
+        if output_srt_path is None:
+            output_srt_path = str(output_file.with_suffix(".srt"))
 
         pause_config = PAUSE_STYLE_CONFIG.get(pause_style, PAUSE_STYLE_CONFIG["default"])
         silence_p = pause_config["silence_p"]
@@ -473,7 +603,6 @@ class VoiceCloner:
             elif voice_id:
                 resolved = self._tts.resolve_voice_name(voice_id) or voice_id
                 if resolved not in self._tts._preset_voices:
-                    # Kiểm tra xem có phải tên clone không
                     clone_candidate = f"clone-{voice_id}"
                     if clone_candidate in self._tts._preset_voices:
                         resolved = clone_candidate
@@ -483,55 +612,80 @@ class VoiceCloner:
             else:
                 voice_name = self._tts._default_voice or "Hải Đăng"
 
-            # Độ biểu cảm: nếu là mặc định ("default" hoặc None) thì giữ nguyên 0.8 của model gốc
-            if temperature is None or temperature == "default":
-                temp = 0.8
-            else:
+            # Tính toán nhiệt độ cảm xúc (Temperature) từ Stability nếu để default
+            if temperature is not None and temperature != "default":
                 try:
                     temp = float(temperature)
                     temp = max(0.3, min(1.2, temp))
                 except (TypeError, ValueError):
                     temp = 0.8
-
-            # Xử lý các thẻ dừng chủ động [nghỉ:X s] hoặc [pause:X s] nếu có
-            if PAUSE_REGEX.search(gen_text):
-                parts = PAUSE_REGEX.split(gen_text)
-                audio_segments: List[np.ndarray] = []
-                for i, part in enumerate(parts):
-                    if i % 2 == 0:
-                        # Phân đoạn chữ
-                        if part.strip():
-                            seg_audio = self._infer_block_smart(
-                                part, voice_name, temp,
-                                silence_p=silence_p, max_chars=max_chars,
-                                auto_normalize=normalize_text,
-                                custom_dict=custom_dict,
-                            )
-                            if len(seg_audio) > 0:
-                                audio_segments.append(seg_audio)
-                    else:
-                        # Thời gian nghỉ tính bằng giây
-                        try:
-                            pause_sec = float(part)
-                            pause_samples = int(pause_sec * self.sample_rate)
-                            if pause_samples > 0:
-                                audio_segments.append(np.zeros(pause_samples, dtype=np.float32))
-                        except Exception:
-                            pass
-
-                if not audio_segments:
-                    raise RuntimeError("Mô hình không tạo được audio từ văn bản.")
-                audio = np.concatenate(audio_segments) if len(audio_segments) > 1 else audio_segments[0]
             else:
-                # Xử lý toàn văn với khối chữ thông minh
-                audio = self._infer_block_smart(
-                    gen_text, voice_name, temp,
+                try:
+                    st_val = float(stability)
+                    # 50% -> 0.80; 80% -> 0.62; 30% -> 0.92
+                    temp = max(0.35, min(1.15, 1.10 - (st_val / 100.0) * 0.60))
+                except Exception:
+                    temp = 0.8
+
+            # Phân tách thành từng câu phụ đề và tạo audio
+            sub_cues = split_text_to_subtitles(gen_text, max_chars=max_chars_per_line)
+            if not sub_cues:
+                sub_cues = [{"text": gen_text, "pause_type": "sentence"}]
+
+            audio_segments: List[np.ndarray] = []
+            processed_cues: List[Dict[str, Any]] = []
+            current_time = 0.0
+
+            for i, cue_item in enumerate(sub_cues):
+                cue_raw_text = cue_item["text"]
+                if not cue_raw_text.strip():
+                    continue
+
+                # Tạo audio cho phân đoạn câu này
+                seg_audio = self._infer_block_smart(
+                    cue_raw_text, voice_name, temp,
                     silence_p=silence_p, max_chars=max_chars,
                     auto_normalize=normalize_text,
                     custom_dict=custom_dict,
                 )
-                if audio is None or len(audio) == 0:
-                    raise RuntimeError("Mô hình không tạo được audio từ văn bản đã cung cấp.")
+
+                if len(seg_audio) == 0:
+                    continue
+
+                duration_sec = len(seg_audio) / self.sample_rate
+                start_sec = current_time
+                end_sec = current_time + duration_sec
+
+                processed_cues.append({
+                    "id": len(processed_cues) + 1,
+                    "start": start_sec,
+                    "end": end_sec,
+                    "text": cue_raw_text,
+                })
+
+                audio_segments.append(seg_audio)
+
+                # Khoảng lặng giữa các câu theo dấu câu
+                if i < len(sub_cues) - 1:
+                    p_type = cue_item["pause_type"]
+                    if p_type == "comma":
+                        p_sec = comma_pause
+                    elif p_type == "sentence":
+                        p_sec = sentence_pause
+                    else:
+                        p_sec = segment_pause
+
+                    p_samples = int(p_sec * self.sample_rate)
+                    if p_samples > 0:
+                        audio_segments.append(np.zeros(p_samples, dtype=np.float32))
+                    current_time = end_sec + p_sec
+                else:
+                    current_time = end_sec
+
+            if not audio_segments:
+                raise RuntimeError("Mô hình không tạo được audio từ văn bản.")
+
+            audio = np.concatenate(audio_segments) if len(audio_segments) > 1 else audio_segments[0]
 
             # 1. Điều chỉnh tốc độ đọc (speed) bằng WSOLA miền thời gian (100% tròn tiếng, không bị ồm)
             try:
@@ -542,6 +696,10 @@ class VoiceCloner:
             if abs(target_speed - 1.0) >= 0.02:
                 try:
                     audio = wsola_time_stretch(audio, rate=target_speed, sr=self.sample_rate)
+                    # Cân chỉnh lại mốc thời gian phụ đề theo tỷ lệ tốc độ
+                    for c in processed_cues:
+                        c["start"] = round(c["start"] / target_speed, 3)
+                        c["end"] = round(c["end"] / target_speed, 3)
                 except Exception as stretch_err:
                     print(f"⚠️ Không thể co giãn tốc độ: {stretch_err}")
 
@@ -557,7 +715,7 @@ class VoiceCloner:
                 except Exception as pitch_err:
                     print(f"⚠️ Không thể dịch cao độ: {pitch_err}")
 
-            # 3. Khử tiếng ồm (de-boom), lọc DC offset & chuẩn hóa âm lượng chuẩn phát thanh
+            # 3. Khử tiếng ồm (de-boom), lọc DC offset & Speaker Boost chuẩn phát thanh
             if len(audio) > 0:
                 audio = audio - np.mean(audio)
                 try:
@@ -568,11 +726,29 @@ class VoiceCloner:
                 except Exception:
                     pass
 
+                target_peak = 0.95 if speaker_boost else 0.90
                 max_amp = float(np.max(np.abs(audio)))
                 if max_amp > 1e-4:
-                    target_peak = 0.92
                     audio = audio * (target_peak / max_amp)
 
+            # Lưu file âm thanh
             self._tts.save(audio, output_file)
 
-        return str(output_file)
+            # Lưu file phụ đề .SRT nếu được yêu cầu
+            srt_path_saved = None
+            if generate_srt and output_srt_path:
+                try:
+                    srt_file = Path(output_srt_path)
+                    srt_file.parent.mkdir(parents=True, exist_ok=True)
+                    srt_content = build_srt_content(processed_cues)
+                    srt_file.write_text(srt_content, encoding="utf-8")
+                    srt_path_saved = str(srt_file)
+                except Exception as srt_err:
+                    print(f"⚠️ Không thể lưu file .srt: {srt_err}")
+
+        return {
+            "audio_path": str(output_file),
+            "srt_path": srt_path_saved,
+            "duration": round(float(len(audio) / self.sample_rate), 2),
+            "cues": processed_cues,
+        }

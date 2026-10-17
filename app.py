@@ -48,8 +48,8 @@ def cleanup_old_outputs(max_age_seconds: int = 7200):
         pass
 
 
-def record_history(file_path: Path, voice_id: str, voice_name: str, text: str, speed: float, pitch: float):
-    """Lưu trữ lịch sử các bản audio đã tạo."""
+def record_history(file_path: Path, voice_id: str, voice_name: str, text: str, speed: float, pitch: float, srt_url: Optional[str] = None):
+    """Lưu trữ lịch sử các bản audio đã tạo kèm phụ đề .srt."""
     try:
         import soundfile as sf
         info = sf.info(str(file_path))
@@ -61,6 +61,7 @@ def record_history(file_path: Path, voice_id: str, voice_name: str, text: str, s
         "id": file_path.stem,
         "filename": file_path.name,
         "url": f"/outputs/{file_path.name}",
+        "srt_url": srt_url,
         "voice_id": voice_id,
         "voice_name": voice_name,
         "text_snippet": (text[:80] + "...") if len(text) > 80 else text,
@@ -208,9 +209,18 @@ class SynthesisRequest(BaseModel):
     voice_id: str = "van_thanh_tri"
     speed: float = 1.0
     pitch: float = 0.0
+    stability: float = 50.0
+    similarity: float = 75.0
+    speaker_boost: bool = True
     temperature: Any = "default"
     pause_style: str = "default"
+    comma_pause: float = 0.3
+    sentence_pause: float = 0.5
+    segment_pause: float = 0.3
+    strip_special_chars: bool = False
+    max_chars_per_line: int = 200
     normalize_text: bool = True
+    generate_srt: bool = True
     custom_dict: Optional[Dict[str, str]] = None
 
 
@@ -326,7 +336,8 @@ async def clone_new_voice(
         raise HTTPException(status_code=400, detail="Vui lòng nhập tên cho giọng đọc.")
 
     clean_name = name.strip()
-    safe_slug = re.sub(r"[^\w\-]+", "_", clean_name.lower()).strip("_")
+    safe_slug = re.sub(r"[^\w\-]+", "_", clean_name.lower()).strip("_") or "voice"
+    voice_id = f"custom_{safe_slug}_{uuid.uuid4().hex[:6]}"
     safe_filename = "".join(c if c.isalnum() or c in (".", "-", "_") else "_" for c in audio_file.filename)
     temp_path = CUSTOM_DIR / f"upload_{uuid.uuid4().hex[:6]}_{safe_filename}"
     final_wav = CUSTOM_DIR / f"{voice_id}.wav"
@@ -551,20 +562,31 @@ def synthesize_speech(req: SynthesisRequest, background_tasks: BackgroundTasks):
 
     voice_info = all_voices[req.voice_id]
     output_filename = OUTPUT_DIR / f"{uuid.uuid4()}.wav"
+    output_srt_path = output_filename.with_suffix(".srt")
 
     try:
         cloner = get_cloner()
-        result_path = cloner.generate(
+        result = cloner.generate(
             gen_text=req.text,
             voice_id=req.voice_id if not voice_info["is_clone"] else None,
             ref_audio_path=voice_info["audio_path"] if voice_info["is_clone"] else None,
             ref_text=voice_info.get("ref_text", ""),
             output_path=str(output_filename),
+            output_srt_path=str(output_srt_path),
             speed=speed,
             pitch=pitch,
+            stability=req.stability,
+            similarity=req.similarity,
+            speaker_boost=req.speaker_boost,
             temperature=temperature,
             pause_style=pause_style,
+            comma_pause=req.comma_pause,
+            sentence_pause=req.sentence_pause,
+            segment_pause=req.segment_pause,
+            strip_special_chars=req.strip_special_chars,
+            max_chars_per_line=req.max_chars_per_line,
             normalize_text=normalize_text,
+            generate_srt=req.generate_srt,
             custom_dict=req.custom_dict,
         )
     except Exception as exc:
@@ -573,18 +595,61 @@ def synthesize_speech(req: SynthesisRequest, background_tasks: BackgroundTasks):
             detail=f"Lỗi trong quá trình tạo âm thanh: {str(exc)}",
         ) from exc
 
+    audio_path = result["audio_path"] if isinstance(result, dict) else str(result)
+    srt_path = result.get("srt_path") if isinstance(result, dict) else None
+    duration = result.get("duration", 0.0) if isinstance(result, dict) else 0.0
+    cues = result.get("cues", []) if isinstance(result, dict) else []
+
+    audio_url = f"/outputs/{Path(audio_path).name}"
+    srt_url = f"/outputs/{Path(srt_path).name}" if srt_path and Path(srt_path).exists() else None
+
     # Lưu vào lịch sử và dọn dẹp file cũ
     record_history(
-        file_path=output_filename,
+        file_path=Path(audio_path),
         voice_id=req.voice_id,
         voice_name=voice_info["name"],
         text=req.text,
         speed=speed,
         pitch=pitch,
+        srt_url=srt_url,
     )
     background_tasks.add_task(cleanup_old_outputs)
 
-    return FileResponse(result_path, media_type="audio/wav")
+    return JSONResponse({
+        "status": "ok",
+        "audio_url": audio_url,
+        "srt_url": srt_url,
+        "duration": duration,
+        "cues": cues,
+    })
+
+
+@app.post("/api/parse-script")
+async def parse_script_file(file: UploadFile = File(...)):
+    """Trích xuất nội dung văn bản từ file kịch bản .txt hoặc .srt tải lên."""
+    content = await file.read()
+    text = ""
+    try:
+        text = content.decode("utf-8")
+    except UnicodeDecodeError:
+        try:
+            text = content.decode("cp1258")
+        except Exception:
+            text = content.decode("latin-1", errors="replace")
+
+    if file.filename.lower().endswith(".srt"):
+        blocks = re.split(r"\n\s*\n", text.replace("\r\n", "\n"))
+        clean_lines = []
+        for b in blocks:
+            lines = b.strip().split("\n")
+            content_lines = [l.strip() for l in lines if l.strip() and not re.match(r"^\d+$", l.strip()) and "-->" not in l]
+            if content_lines:
+                clean_lines.append(" ".join(content_lines))
+        clean_text = "\n".join(clean_lines)
+    else:
+        clean_text = text.strip()
+
+    return {"status": "ok", "text": clean_text, "filename": file.filename}
 
 
 def extract_preview_text(full_text: str, max_words: int = 35) -> str:
@@ -662,7 +727,7 @@ def synthesize_preview_snippet(req: SynthesisRequest, background_tasks: Backgrou
 
     try:
         cloner = get_cloner()
-        result_path = cloner.generate(
+        result = cloner.generate(
             gen_text=preview_text,
             voice_id=req.voice_id if not voice_info["is_clone"] else None,
             ref_audio_path=voice_info["audio_path"] if voice_info["is_clone"] else None,
@@ -670,9 +735,17 @@ def synthesize_preview_snippet(req: SynthesisRequest, background_tasks: Backgrou
             output_path=str(output_filename),
             speed=speed,
             pitch=pitch,
+            stability=req.stability,
+            similarity=req.similarity,
+            speaker_boost=req.speaker_boost,
             temperature=temperature,
             pause_style=pause_style,
+            comma_pause=req.comma_pause,
+            sentence_pause=req.sentence_pause,
+            segment_pause=req.segment_pause,
+            strip_special_chars=req.strip_special_chars,
             normalize_text=normalize_text,
+            generate_srt=False,
             custom_dict=req.custom_dict,
         )
     except Exception as exc:
@@ -681,8 +754,9 @@ def synthesize_preview_snippet(req: SynthesisRequest, background_tasks: Backgrou
             detail=f"Lỗi tạo audio nghe thử: {str(exc)}",
         ) from exc
 
+    audio_path = result["audio_path"] if isinstance(result, dict) else str(result)
     background_tasks.add_task(cleanup_old_outputs)
-    return FileResponse(result_path, media_type="audio/wav")
+    return FileResponse(audio_path, media_type="audio/wav")
 
 
 if __name__ == "__main__":

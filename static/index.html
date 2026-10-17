@@ -199,6 +199,212 @@
     }
     .btn-icon:hover { background: #22344e; color: #52e0bd; border-color: #52e0bd; }
 
+    /* Voice Settings (ElevenLabs / Dgt Auto TTS style) */
+    .settings-panel {
+      margin-top: 18px;
+      padding: 16px;
+      background: #0f1c2e;
+      border: 1px solid #24354d;
+      border-radius: 14px;
+    }
+    .settings-panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .settings-panel-title {
+      font-size: 13px;
+      font-weight: 750;
+      color: #edf2fb;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .reset-btn {
+      background: #142236;
+      border: 1px solid #283952;
+      color: #92a4bd;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 650;
+      padding: 4px 10px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all .15s ease;
+    }
+    .reset-btn:hover {
+      background: #1d314d;
+      color: #52e0bd;
+      border-color: #52e0bd;
+    }
+    .slider-card {
+      background: #0b1424;
+      border: 1px solid #1c2b40;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+    }
+    .slider-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .slider-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #d1dced;
+    }
+    .slider-value {
+      font-size: 12px;
+      font-weight: 750;
+      color: #52e0bd;
+      font-variant-numeric: tabular-nums;
+    }
+    .slider-sub {
+      font-size: 11px;
+      color: #798ba3;
+      margin-top: 5px;
+      line-height: 1.4;
+    }
+
+    /* Toggle Switch */
+    .switch-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: pointer;
+      user-select: none;
+      padding: 12px 14px;
+      background: #0b1424;
+      border: 1px solid #1c2b40;
+      border-radius: 10px;
+      margin-bottom: 12px;
+    }
+    .switch-info { flex: 1; }
+    .switch-title { font-size: 12px; font-weight: 700; color: #d1dced; display: flex; align-items: center; gap: 6px; }
+    .switch-sub { font-size: 11px; color: #798ba3; margin-top: 3px; }
+    .switch-box {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      background: #1f2e44;
+      border-radius: 99px;
+      transition: background .2s ease;
+      flex-shrink: 0;
+    }
+    .switch-box:before {
+      content: "";
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 18px;
+      height: 18px;
+      background: #8da1bc;
+      border-radius: 50%;
+      transition: transform .2s ease, background .2s ease;
+    }
+    input[type="checkbox"]:checked + .switch-box {
+      background: #52e0bd;
+    }
+    input[type="checkbox"]:checked + .switch-box:before {
+      transform: translateX(18px);
+      background: #071a19;
+    }
+
+    /* Subtitles Panel & Table */
+    .subtitles-panel {
+      margin-top: 20px;
+      padding: 16px;
+      border-radius: 12px;
+      background: #0b1422;
+      border: 1px solid #1f2f45;
+    }
+    .subtitles-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .subtitles-title {
+      font-size: 13px;
+      font-weight: 750;
+      color: #edf2fb;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .subtitles-table-wrap {
+      max-height: 260px;
+      overflow-y: auto;
+      border: 1px solid #18273b;
+      border-radius: 8px;
+      background: #080f1a;
+    }
+    .subtitles-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .subtitles-table th {
+      position: sticky;
+      top: 0;
+      background: #0f1c2d;
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      color: #7b8ea5;
+      border-bottom: 1px solid #1f3047;
+      z-index: 2;
+    }
+    .subtitles-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #132032;
+      color: #cbd7e6;
+      vertical-align: middle;
+    }
+    .subtitles-table tr:hover td {
+      background: rgba(82, 224, 189, 0.05);
+    }
+    .subtitles-table tr.active-cue td {
+      background: rgba(82, 224, 189, 0.12);
+      color: #52e0bd;
+    }
+    .cue-time-badge {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11px;
+      color: #52e0bd;
+      background: rgba(82, 224, 189, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(82, 224, 189, 0.2);
+      white-space: nowrap;
+    }
+    .cue-play-btn {
+      background: #142236;
+      border: 1px solid #283a54;
+      color: #52e0bd;
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all .14s ease;
+    }
+    .cue-play-btn:hover {
+      background: #52e0bd;
+      color: #071a19;
+    }
+
     /* Modals */
     .modal-backdrop {
       display: none; position: fixed; inset: 0; background: rgba(5, 10, 20, .78);
@@ -284,7 +490,18 @@
         
         <form id="synthesisForm">
           <div class="field">
-            <label for="text">Văn bản Tiếng Việt</label>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+              <label for="text" style="margin:0;">Văn bản Tiếng Việt</label>
+              <div style="display:flex; gap:8px;">
+                <button type="button" id="importScriptBtn" class="dict-btn" title="Tải lên file văn bản .txt hoặc file phụ đề .srt để AI đọc">
+                  📁 Nhập kịch bản (.txt, .srt)
+                </button>
+                <input type="file" id="scriptFileInput" accept=".txt,.srt" style="display:none;">
+                <button type="button" id="openAdvanceBtn" class="dict-btn" title="Mở tùy chỉnh khoảng ngắt âm, dấu phẩy, dấu chấm, độ dài câu">
+                  ⚙️ Cài đặt nâng cao
+                </button>
+              </div>
+            </div>
             <textarea id="text" name="text" placeholder="Nhập nội dung tiếng Việt... (Dấu phẩy, chấm, ba chấm và xuống dòng sẽ giúp AI tự động lấy hơi tự nhiên)" required></textarea>
             
             <div class="text-meta">
@@ -318,7 +535,7 @@
           <!-- Lựa chọn giọng đọc & Tùy biến -->
           <div class="controls">
             <!-- Giọng đọc -->
-            <div class="field" style="grid-column: 1 / -1;">
+            <div class="field" style="grid-column: 1 / -1; margin-bottom: 8px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
                 <label for="voice" style="margin:0;">Giọng đọc</label>
                 <div style="display:flex; gap:6px;">
@@ -337,63 +554,120 @@
               <div id="voiceDescription" style="margin-top:6px; font-size:11px; color:#52e0bd; min-height:16px;"></div>
               <audio id="previewAudioPlayer" style="display:none;"></audio>
             </div>
+          </div>
 
-            <!-- Tốc độ đọc -->
-            <div class="field">
-              <div class="speed-head">
-                <label for="speedRange">Tốc độ đọc</label>
-                <span id="speedValue" class="speed-value">1.00x (Mặc định - Chuẩn)</span>
+          <!-- KHỐI CÀI ĐẶT GIỌNG ĐỌC (VOICE SETTINGS - ELEVENLABS STYLE) -->
+          <div class="settings-panel">
+            <div class="settings-panel-head">
+              <div class="settings-panel-title">
+                <span>🎚️ Cài đặt giọng đọc (Voice Settings)</span>
               </div>
-              <input id="speedRange" name="speed" type="range" min="0.8" max="1.35" step="0.05" value="1.0">
+              <button type="button" class="reset-btn" onclick="resetVoiceSettings()" title="Khôi phục toàn bộ thông số về mặc định chuẩn">
+                <span>🔄 Đặt lại mặc định</span>
+              </button>
+            </div>
+
+            <!-- Tốc độ đọc (Speed) -->
+            <div class="slider-card">
+              <div class="slider-head">
+                <span class="slider-title">Tốc độ đọc (Speed)</span>
+                <span id="speedValue" class="slider-value">1.00x (Chuẩn)</span>
+              </div>
+              <input id="speedRange" name="speed" type="range" min="0.70" max="1.50" step="0.05" value="1.0">
               <div class="range-labels">
-                <span>0.8x (Chậm)</span>
-                <span>1.0x (Chuẩn)</span>
-                <span>1.05x</span>
-                <span>1.35x (Nhanh)</span>
+                <span>0.70x (Chậm)</span>
+                <span>1.00x (Chuẩn)</span>
+                <span>1.50x (Nhanh)</span>
               </div>
             </div>
 
-            <!-- Cao độ giọng (Pitch) -->
-            <div class="field">
-              <div class="speed-head">
-                <label for="pitchRange">Cao độ giọng (Pitch)</label>
-                <span id="pitchValue" class="speed-value">0.0 (Chuẩn - Trong trẻo)</span>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
+              <!-- Độ ổn định (Stability) -->
+              <div class="slider-card">
+                <div class="slider-head">
+                  <span class="slider-title">Độ ổn định (Stability)</span>
+                  <span id="stabilityValue" class="slider-value">50% (Cân bằng)</span>
+                </div>
+                <input id="stabilityRange" name="stability" type="range" min="0" max="100" step="1" value="50">
+                <div class="range-labels">
+                  <span>0% (Biểu cảm)</span>
+                  <span>50%</span>
+                  <span>100% (Ổn định)</span>
+                </div>
+                <div class="slider-sub">Thấp: cảm xúc phong phú sinh động · Cao: đều giọng, điềm đạm</div>
               </div>
-              <input id="pitchRange" name="pitch" type="range" min="-3.0" max="3.0" step="0.5" value="0.0">
-              <div class="range-labels">
-                <span>-3.0 (Trầm ấm)</span>
-                <span>0.0 (Gốc trong trẻo)</span>
-                <span>+3.0 (Cao thanh)</span>
+
+              <!-- Độ tương đồng (Similarity) -->
+              <div class="slider-card">
+                <div class="slider-head">
+                  <span class="slider-title">Độ tương đồng (Similarity)</span>
+                  <span id="similarityValue" class="slider-value">75% (Chuẩn bám sát)</span>
+                </div>
+                <input id="similarityRange" name="similarity" type="range" min="0" max="100" step="1" value="75">
+                <div class="range-labels">
+                  <span>0% (Linh hoạt)</span>
+                  <span>75%</span>
+                  <span>100% (Bám sát 1:1)</span>
+                </div>
+                <div class="slider-sub">Mức độ giữ đặc trưng âm sắc của giọng mẫu gốc</div>
               </div>
-              <div style="margin-top:5px; font-size:11px; color:#8fa1ba;">Khuyên dùng 0.0 để giữ nguyên bản giọng gốc tròn vành rõ chữ nhất</div>
             </div>
 
-            <!-- Hồn giọng / Biểu cảm -->
-            <div class="field">
-              <label for="emotionSelect">Độ biểu cảm / Hồn giọng</label>
-              <select id="emotionSelect" name="temperature">
-                <option value="default" selected>✨ Mặc định (Giữ nguyên bản giọng gốc)</option>
-                <option value="0.85">🌸 Ấm áp, sâu lắng (0.85 - Podcast, tự sự)</option>
-                <option value="0.95">🔥 Giàu cảm xúc, sinh động (0.95 - Quảng cáo, review)</option>
-                <option value="1.05">🎭 Kịch tính, biểu cảm cao (1.05 - Hoạt hình, kịch nói)</option>
-                <option value="0.70">🎙️ Điềm đạm, rõ chữ (0.70 - Bản tin thời sự)</option>
-                <option value="0.60">📖 Nghiêm túc, trang trọng (0.60 - Thuyết minh tài liệu)</option>
-                <option value="0.50">⚖️ Đều giọng, trung tính (0.50 - Tổng đài IVR, đọc số liệu)</option>
-              </select>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin-top:2px;">
+              <!-- Cao độ giọng (Pitch) -->
+              <div class="slider-card">
+                <div class="slider-head">
+                  <span class="slider-title">Cao độ giọng (Pitch)</span>
+                  <span id="pitchValue" class="slider-value">0.0 (Chuẩn tròn vành)</span>
+                </div>
+                <input id="pitchRange" name="pitch" type="range" min="-3.0" max="3.0" step="0.5" value="0.0">
+                <div class="range-labels">
+                  <span>-3.0 (Trầm ấm)</span>
+                  <span>0.0 (Gốc trong)</span>
+                  <span>+3.0 (Cao thanh)</span>
+                </div>
+                <div class="slider-sub">Khuyên dùng 0.0 để giữ nguyên bản giọng tròn vành rõ chữ</div>
+              </div>
+
+              <!-- Speaker Boost Toggle -->
+              <label class="switch-label" for="speakerBoostToggle">
+                <div class="switch-info">
+                  <div class="switch-title">
+                    <span>⚡ Speaker Boost (Khử ồm 65Hz)</span>
+                  </div>
+                  <div class="switch-sub">Lọc rung sub-bass, làm sáng tiếng & chuẩn hóa -0.5 dBFS</div>
+                </div>
+                <input type="checkbox" id="speakerBoostToggle" name="speaker_boost" checked style="display:none;">
+                <div class="switch-box"></div>
+              </label>
             </div>
 
-            <!-- Nhịp ngắt nghỉ tự nhiên -->
-            <div class="field">
-              <label for="pauseSelect">Nhịp ngắt nghỉ tự nhiên</label>
-              <select id="pauseSelect" name="pause_style">
-                <option value="default" selected>🌿 Mặc định (Giữ nguyên nhịp điệu gốc)</option>
-                <option value="relaxed">📖 Thư thả, sâu lắng (Sách nói, podcast đêm)</option>
-                <option value="expressive">🎭 Diễn cảm, ngắt rõ vế (Kể chuyện, kịch bản)</option>
-                <option value="presentation">🎓 Dõng dạc, rành mạch (Thuyết trình, bài giảng)</option>
-                <option value="dramatic">🎬 Lắng đọng, kịch tính (Phim ảnh, tâm trạng)</option>
-                <option value="compact">⚡ Nhanh, liền mạch (Tin tức vắn, video ngắn)</option>
-                <option value="rapid">🚀 Siêu tốc, nhịp dồn (Quảng cáo xả hàng, tin nóng)</option>
-              </select>
+            <!-- Tùy chọn Phong cách & Nhịp ngắt -->
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:2px;">
+              <div>
+                <label for="emotionSelect" style="font-size:11px; margin-bottom:5px;">Phong cách biểu cảm sẵn có</label>
+                <select id="emotionSelect" name="temperature" style="height:38px; font-size:12px;">
+                  <option value="default" selected>✨ Mặc định (Theo thanh Stability)</option>
+                  <option value="0.85">🌸 Ấm áp, sâu lắng (0.85 - Podcast)</option>
+                  <option value="0.95">🔥 Sinh động, lôi cuốn (0.95 - Review)</option>
+                  <option value="1.05">🎭 Kịch tính, kịch nói (1.05)</option>
+                  <option value="0.70">🎙️ Điềm đạm, thời sự (0.70)</option>
+                  <option value="0.60">📖 Trang trọng, thuyết minh (0.60)</option>
+                  <option value="0.50">⚖️ Trung tính, tổng đài IVR (0.50)</option>
+                </select>
+              </div>
+              <div>
+                <label for="pauseSelect" style="font-size:11px; margin-bottom:5px;">Nhịp ngắt nghỉ tự nhiên</label>
+                <select id="pauseSelect" name="pause_style" style="height:38px; font-size:12px;">
+                  <option value="default" selected>🌿 Mặc định (Theo Cài đặt nâng cao)</option>
+                  <option value="relaxed">📖 Thư thả, sâu lắng (Podcast đêm)</option>
+                  <option value="expressive">🎭 Diễn cảm, rõ vế (Kể chuyện)</option>
+                  <option value="presentation">🎓 Dõng dạc, rành mạch (Bài giảng)</option>
+                  <option value="dramatic">🎬 Lắng đọng, kịch tính (Phim)</option>
+                  <option value="compact">⚡ Nhanh, liền mạch (Video ngắn)</option>
+                  <option value="rapid">🚀 Siêu tốc, dồn dập (Xả hàng)</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -432,6 +706,7 @@
 
           <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:14px;">
             <a id="downloadLink" class="download" download="voice.wav" href="#" style="margin:0; background:#163b33; color:#59e1bf; border:1px solid rgba(82,224,189,0.3);">↓ Tải file WAV (48kHz)</a>
+            <a id="downloadSrtLink" class="download" download="subtitles.srt" href="#" style="margin:0; background:#14263f; color:#7dd3fc; border:1px solid rgba(125,211,252,0.35); display:none;">📝 Tải phụ đề (.SRT)</a>
             <div style="display:flex; align-items:center; gap:6px; font-size:11px; color:#92a3ba; margin-left:auto;">
               <span>Nghe tua:</span>
               <button type="button" class="rate-btn" onclick="setPlayerRate(0.8)">0.8x</button>
@@ -439,6 +714,34 @@
               <button type="button" class="rate-btn" onclick="setPlayerRate(1.25)">1.25x</button>
               <button type="button" class="rate-btn" onclick="setPlayerRate(1.5)">1.5x</button>
               <button type="button" class="rate-btn" onclick="setPlayerRate(2.0)">2.0x</button>
+            </div>
+          </div>
+
+          <!-- BẢNG PHỤ ĐỀ ĐỒNG BỘ (.SRT) -->
+          <div id="subtitlesPanel" class="subtitles-panel" style="display:none;">
+            <div class="subtitles-head">
+              <div class="subtitles-title">
+                <span>🎬 Bảng phụ đề đồng bộ âm thanh (.SRT)</span>
+                <span id="cueCountBadge" style="font-size:11px; color:#52e0bd; background:rgba(82,224,189,0.12); padding:2px 8px; border-radius:99px; font-weight:700;">0 câu</span>
+              </div>
+              <button type="button" class="reset-btn" onclick="copySrtToClipboard()" title="Sao chép toàn bộ nội dung SRT">
+                <span>📋 Sao chép SRT</span>
+              </button>
+            </div>
+            <div class="subtitles-table-wrap">
+              <table class="subtitles-table">
+                <thead>
+                  <tr>
+                    <th style="width:40px;">#</th>
+                    <th style="width:190px;">Mốc thời gian (SRT)</th>
+                    <th>Nội dung câu nói</th>
+                    <th style="width:70px; text-align:center;">Phát</th>
+                  </tr>
+                </thead>
+                <tbody id="subtitlesTableBody">
+                  <!-- Cues populated here -->
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -569,6 +872,67 @@
     </div>
   </div>
 
+  <!-- MODAL: CÀI ĐẶT NÂNG CAO (ADVANCE SETTINGS - DGT AUTO TTS STYLE) -->
+  <div id="advanceModal" class="modal-backdrop">
+    <div class="modal-box" style="width: min(580px, 100%);">
+      <div class="modal-head">
+        <h3 class="modal-title">⚙️ Cài đặt nâng cao (Advance Settings)</h3>
+        <button type="button" class="close-modal-btn" onclick="closeAdvanceModal()">&times;</button>
+      </div>
+      <p style="font-size:12px; color:#8fa3be; margin:0 0 16px; line-height:1.5;">
+        Tùy chỉnh khoảng ngắt nghỉ theo từng dấu câu, phân tách độ dài phụ đề và xử lý ký tự theo chuẩn Dgt Auto TTS Subtitles.
+      </p>
+
+      <form id="advanceForm" onsubmit="event.preventDefault(); saveAdvanceSettings();">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;" class="field">
+          <div>
+            <label for="advSegmentPause">Ngắt âm giữa các đoạn (giây)</label>
+            <input type="number" id="advSegmentPause" min="0.0" max="3.0" step="0.05" value="0.30" style="height:38px;">
+            <div style="font-size:10px; color:#78879d; margin-top:4px;">Mặc định: 0.3s (giữa các phân đoạn)</div>
+          </div>
+          <div>
+            <label for="advMaxChars">Số ký tự tối đa / dòng phụ đề</label>
+            <input type="number" id="advMaxChars" min="40" max="500" step="10" value="200" style="height:38px;">
+            <div style="font-size:10px; color:#78879d; margin-top:4px;">Chuẩn CapCut / TikTok: 120-200 ký tự</div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;" class="field">
+          <div>
+            <label for="advCommaPause">Ngắt âm dấu phẩy [,] (giây)</label>
+            <input type="number" id="advCommaPause" min="0.0" max="2.0" step="0.05" value="0.30" style="height:38px;">
+            <div style="font-size:10px; color:#78879d; margin-top:4px;">Mặc định: 0.3s (ngắt lấy hơi tự nhiên)</div>
+          </div>
+          <div>
+            <label for="advSentencePause">Ngắt âm dấu chấm [. ! ?] (giây)</label>
+            <input type="number" id="advSentencePause" min="0.0" max="3.0" step="0.05" value="0.50" style="height:38px;">
+            <div style="font-size:10px; color:#78879d; margin-top:4px;">Mặc định: 0.5s (kết thúc câu trọn vẹn)</div>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:14px;">
+          <label class="norm-label" for="advStripSpecial">
+            <input type="checkbox" id="advStripSpecial" style="width:16px; height:16px; accent-color:#52e0bd; cursor:pointer;">
+            <span>🧹 Tự động loại bỏ ký tự đặc biệt, biểu tượng cảm xúc (emoji, icon, #@%...)</span>
+          </label>
+        </div>
+
+        <div class="field">
+          <label class="norm-label" for="advGenerateSrt">
+            <input type="checkbox" id="advGenerateSrt" checked style="width:16px; height:16px; accent-color:#52e0bd; cursor:pointer;">
+            <span>🎬 Tự động tạo file phụ đề (.SRT) chuẩn video CapCut / Premiere / DaVinci</span>
+          </label>
+        </div>
+
+        <div class="actions" style="margin-top:22px;">
+          <button type="submit" class="primary">💾 Lưu cài đặt</button>
+          <button type="button" class="secondary" onclick="resetAdvanceSettingsToDefault()">Đặt lại chuẩn</button>
+          <button type="button" class="secondary" onclick="closeAdvanceModal()">Đóng</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
     // Templates
     const SAMPLE_TEMPLATES = {
@@ -622,6 +986,7 @@
     const audioPanel = document.getElementById("audioPanel");
     const audioPlayer = document.getElementById("audioPlayer");
     const downloadLink = document.getElementById("downloadLink");
+    const downloadSrtLink = document.getElementById("downloadSrtLink");
     const previewBtn = document.getElementById("previewVoiceBtn");
     const previewIcon = document.getElementById("previewIcon");
     const previewText = document.getElementById("previewText");
@@ -629,8 +994,13 @@
     const deleteVoiceBtn = document.getElementById("deleteVoiceBtn");
     const speedRange = document.getElementById("speedRange");
     const speedValue = document.getElementById("speedValue");
+    const stabilityRange = document.getElementById("stabilityRange");
+    const stabilityValue = document.getElementById("stabilityValue");
+    const similarityRange = document.getElementById("similarityRange");
+    const similarityValue = document.getElementById("similarityValue");
     const pitchRange = document.getElementById("pitchRange");
     const pitchValue = document.getElementById("pitchValue");
+    const speakerBoostToggle = document.getElementById("speakerBoostToggle");
     const normalizeTextToggle = document.getElementById("normalizeTextToggle");
     const emotionSelect = document.getElementById("emotionSelect");
     const pauseSelect = document.getElementById("pauseSelect");
@@ -638,11 +1008,18 @@
     const previewSnippetIcon = document.getElementById("previewSnippetIcon");
     const previewSnippetText = document.getElementById("previewSnippetText");
     const waveformVisualizer = document.getElementById("waveformVisualizer");
+    const importScriptBtn = document.getElementById("importScriptBtn");
+    const scriptFileInput = document.getElementById("scriptFileInput");
+    const openAdvanceBtn = document.getElementById("openAdvanceBtn");
+    const advanceModal = document.getElementById("advanceModal");
 
     let currentAudioUrl = null;
     let voiceMap = {};
     let isPreviewPlaying = false;
     let isSnippetPlaying = false;
+    let currentCues = [];
+    let currentSrtContent = "";
+    let cueTimeout = null;
 
     // Visualizer animation
     audioPlayer.addEventListener("play", () => waveformVisualizer.classList.add("playing"));
@@ -653,6 +1030,110 @@
       notice.textContent = message;
       notice.className = `notice show ${kind}`;
     }
+
+    // Advance Settings Storage & Modal Logic
+    function getStoredAdvanceSettings() {
+      const defaults = {
+        segment_pause: 0.30,
+        comma_pause: 0.30,
+        sentence_pause: 0.50,
+        strip_special_chars: false,
+        max_chars_per_line: 200,
+        generate_srt: true,
+      };
+      try {
+        const stored = JSON.parse(localStorage.getItem("voice_advance_settings") || "{}");
+        return { ...defaults, ...stored };
+      } catch {
+        return defaults;
+      }
+    }
+
+    function saveAdvanceSettingsToStorage(settings) {
+      localStorage.setItem("voice_advance_settings", JSON.stringify(settings));
+    }
+
+    window.openAdvanceModal = function() {
+      const s = getStoredAdvanceSettings();
+      document.getElementById("advSegmentPause").value = s.segment_pause;
+      document.getElementById("advCommaPause").value = s.comma_pause;
+      document.getElementById("advSentencePause").value = s.sentence_pause;
+      document.getElementById("advStripSpecial").checked = !!s.strip_special_chars;
+      document.getElementById("advMaxChars").value = s.max_chars_per_line;
+      document.getElementById("advGenerateSrt").checked = !!s.generate_srt;
+      advanceModal.classList.add("open");
+    };
+
+    window.closeAdvanceModal = function() {
+      advanceModal.classList.remove("open");
+    };
+
+    window.saveAdvanceSettings = function() {
+      const settings = {
+        segment_pause: parseFloat(document.getElementById("advSegmentPause").value) || 0.30,
+        comma_pause: parseFloat(document.getElementById("advCommaPause").value) || 0.30,
+        sentence_pause: parseFloat(document.getElementById("advSentencePause").value) || 0.50,
+        strip_special_chars: document.getElementById("advStripSpecial").checked,
+        max_chars_per_line: parseInt(document.getElementById("advMaxChars").value, 10) || 200,
+        generate_srt: document.getElementById("advGenerateSrt").checked,
+      };
+      saveAdvanceSettingsToStorage(settings);
+      closeAdvanceModal();
+      showNotice("✅ Đã lưu Cài đặt nâng cao thành công!", "info");
+    };
+
+    window.resetAdvanceSettingsToDefault = function() {
+      document.getElementById("advSegmentPause").value = 0.30;
+      document.getElementById("advCommaPause").value = 0.30;
+      document.getElementById("advSentencePause").value = 0.50;
+      document.getElementById("advStripSpecial").checked = false;
+      document.getElementById("advMaxChars").value = 200;
+      document.getElementById("advGenerateSrt").checked = true;
+    };
+
+    if (openAdvanceBtn) {
+      openAdvanceBtn.addEventListener("click", openAdvanceModal);
+    }
+
+    // Import kịch bản .txt hoặc .srt
+    if (importScriptBtn && scriptFileInput) {
+      importScriptBtn.addEventListener("click", () => scriptFileInput.click());
+      scriptFileInput.addEventListener("change", async () => {
+        const file = scriptFileInput.files[0];
+        if (!file) return;
+        showNotice(`Đang xử lý kịch bản từ "${file.name}"...`, "info");
+        const formData = new FormData();
+        formData.append("file", file);
+        try {
+          const res = await fetch("/api/parse-script", { method: "POST", body: formData });
+          if (!res.ok) throw new Error("Không thể trích xuất nội dung từ file kịch bản.");
+          const data = await res.json();
+          textInput.value = data.text;
+          textInput.dispatchEvent(new Event("input"));
+          showNotice(`✅ Đã nhập thành công nội dung từ "${file.name}" (${data.text.length} ký tự)!`, "info");
+        } catch (err) {
+          showNotice(err.message || "Lỗi đọc file kịch bản.", "error");
+        } finally {
+          scriptFileInput.value = "";
+        }
+      });
+    }
+
+    // Reset Voice Settings (Speed 1.0, Stability 50%, Similarity 75%, Pitch 0.0, Speaker Boost On)
+    window.resetVoiceSettings = function() {
+      speedRange.value = "1.0";
+      speedRange.dispatchEvent(new Event("input"));
+      stabilityRange.value = "50";
+      stabilityRange.dispatchEvent(new Event("input"));
+      similarityRange.value = "75";
+      similarityRange.dispatchEvent(new Event("input"));
+      pitchRange.value = "0.0";
+      pitchRange.dispatchEvent(new Event("input"));
+      if (speakerBoostToggle) speakerBoostToggle.checked = true;
+      emotionSelect.value = "default";
+      pauseSelect.value = "default";
+      showNotice("Đã đặt lại toàn bộ thông số giọng đọc về chuẩn mặc định.", "info");
+    };
 
     function stopPreview() {
       if (previewAudioPlayer) {
@@ -738,6 +1219,7 @@
 
         try {
           const customDict = getStoredCustomDict();
+          const adv = getStoredAdvanceSettings();
           const response = await fetch("/synthesize-preview", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -746,9 +1228,17 @@
               voice_id: voiceSelect.value,
               speed: parseFloat(speedRange.value) || 1.0,
               pitch: parseFloat(pitchRange.value) || 0.0,
+              stability: parseFloat(stabilityRange.value) || 50.0,
+              similarity: parseFloat(similarityRange.value) || 75.0,
+              speaker_boost: speakerBoostToggle ? speakerBoostToggle.checked : true,
               temperature: emotionSelect.value,
               pause_style: pauseSelect.value || "default",
+              comma_pause: parseFloat(adv.comma_pause) || 0.30,
+              sentence_pause: parseFloat(adv.sentence_pause) || 0.50,
+              segment_pause: parseFloat(adv.segment_pause) || 0.30,
+              strip_special_chars: !!adv.strip_special_chars,
               normalize_text: normalizeTextToggle ? normalizeTextToggle.checked : true,
+              generate_srt: false,
               custom_dict: customDict
             })
           });
@@ -883,21 +1373,41 @@
       }
     });
 
-    // Speed & Pitch sliders
+    // Speed Slider
     speedRange.addEventListener("input", () => {
       const val = parseFloat(speedRange.value);
       let desc = "";
-      if (val === 1.0) desc = " (Mặc định - Chuẩn)";
-      else if (val === 1.05) desc = " (Tự nhiên)";
-      else if (val > 1.05) desc = " (Nhanh)";
-      else desc = " (Chậm)";
+      if (val === 1.0) desc = " (Chuẩn)";
+      else if (val < 1.0) desc = " (Chậm)";
+      else desc = " (Nhanh)";
       speedValue.textContent = `${val.toFixed(2)}x${desc}`;
     });
 
+    // Stability Slider
+    stabilityRange.addEventListener("input", () => {
+      const val = parseInt(stabilityRange.value, 10);
+      let desc = "";
+      if (val < 35) desc = " (Biểu cảm cao)";
+      else if (val <= 65) desc = " (Cân bằng)";
+      else desc = " (Rất ổn định)";
+      stabilityValue.textContent = `${val}%${desc}`;
+    });
+
+    // Similarity Slider
+    similarityRange.addEventListener("input", () => {
+      const val = parseInt(similarityRange.value, 10);
+      let desc = "";
+      if (val < 50) desc = " (Linh hoạt)";
+      else if (val <= 85) desc = " (Chuẩn bám sát)";
+      else desc = " (Bám sát 1:1)";
+      similarityValue.textContent = `${val}%${desc}`;
+    });
+
+    // Pitch Slider
     pitchRange.addEventListener("input", () => {
       const val = parseFloat(pitchRange.value);
       let desc = "";
-      if (val === 0.0) desc = " (Chuẩn - Trong trẻo nhất)";
+      if (val === 0.0) desc = " (Chuẩn tròn vành)";
       else if (val <= -2.0) desc = " (Rất trầm)";
       else if (val < 0.0) desc = " (Trầm ấm)";
       else if (val >= 2.0) desc = " (Rất cao, thanh)";
@@ -964,6 +1474,94 @@
       textInput.focus();
     });
 
+    // Format time in SRT format: HH:MM:SS,mmm
+    function formatSrtTime(sec) {
+      const totalMs = Math.round(sec * 1000);
+      const ms = totalMs % 1000;
+      const totalS = Math.floor(totalMs / 1000);
+      const s = totalS % 60;
+      const m = Math.floor((totalS % 3600) / 60);
+      const h = Math.floor(totalS / 3600);
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')},${String(ms).padStart(3, '0')}`;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return "";
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function renderSubtitlesTable(cues) {
+      const panel = document.getElementById("subtitlesPanel");
+      const tbody = document.getElementById("subtitlesTableBody");
+      const badge = document.getElementById("cueCountBadge");
+      if (!panel || !tbody) return;
+
+      currentCues = cues || [];
+      if (!currentCues.length) {
+        panel.style.display = "none";
+        return;
+      }
+
+      tbody.innerHTML = "";
+      if (badge) badge.textContent = `${currentCues.length} câu`;
+
+      currentCues.forEach((cue, idx) => {
+        const tr = document.createElement("tr");
+        tr.id = `cue-row-${idx}`;
+        const startStr = formatSrtTime(cue.start);
+        const endStr = formatSrtTime(cue.end);
+        tr.innerHTML = `
+          <td style="color:#788ca6; font-weight:700;">${cue.id || (idx + 1)}</td>
+          <td><span class="cue-time-badge">${startStr} ➔ ${endStr}</span></td>
+          <td style="line-height:1.45;">${escapeHtml(cue.text)}</td>
+          <td style="text-align:center;">
+            <button type="button" class="cue-play-btn" onclick="playCue(${cue.start}, ${cue.end}, ${idx})" title="Nghe câu này">
+              ▶ Nghe
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      currentSrtContent = currentCues.map((c, i) => {
+        return `${i + 1}\n${formatSrtTime(c.start)} --> ${formatSrtTime(c.end)}\n${c.text}\n`;
+      }).join("\n");
+
+      panel.style.display = "block";
+    }
+
+    window.playCue = function(startTime, endTime, rowIdx) {
+      if (!audioPlayer) return;
+      if (cueTimeout) {
+        clearTimeout(cueTimeout);
+        cueTimeout = null;
+      }
+      document.querySelectorAll("#subtitlesTableBody tr").forEach(r => r.classList.remove("active-cue"));
+      const targetRow = document.getElementById(`cue-row-${rowIdx}`);
+      if (targetRow) targetRow.classList.add("active-cue");
+
+      audioPlayer.currentTime = Math.max(0, startTime);
+      audioPlayer.play().catch(() => {});
+
+      const durationMs = Math.max(200, (endTime - startTime) * 1000);
+      cueTimeout = setTimeout(() => {
+        audioPlayer.pause();
+        if (targetRow) targetRow.classList.remove("active-cue");
+      }, durationMs / (audioPlayer.playbackRate || 1.0));
+    };
+
+    window.copySrtToClipboard = function() {
+      if (!currentSrtContent) {
+        showNotice("Chưa có phụ đề để sao chép.", "error");
+        return;
+      }
+      navigator.clipboard.writeText(currentSrtContent).then(() => {
+        showNotice("📋 Đã sao chép nội dung phụ đề SRT vào bộ nhớ tạm!", "info");
+      }).catch(() => {
+        showNotice("Không thể sao chép tự động. Hãy bấm nút 'Tải phụ đề (.SRT)'.", "error");
+      });
+    };
+
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       stopPreview();
@@ -974,12 +1572,13 @@
         return;
       }
       submitButton.disabled = true;
-      buttonText.textContent = "Đang tạo audio...";
+      buttonText.textContent = "Đang tạo audio & phụ đề...";
       audioPanel.classList.remove("show");
       notice.className = "notice";
 
       try {
         const customDict = getStoredCustomDict();
+        const adv = getStoredAdvanceSettings();
         const response = await fetch("/synthesize", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -988,9 +1587,18 @@
             voice_id: voiceSelect.value,
             speed: parseFloat(speedRange.value) || 1.0,
             pitch: parseFloat(pitchRange.value) || 0.0,
+            stability: parseFloat(stabilityRange.value) || 50.0,
+            similarity: parseFloat(similarityRange.value) || 75.0,
+            speaker_boost: speakerBoostToggle ? speakerBoostToggle.checked : true,
             temperature: emotionSelect.value,
             pause_style: pauseSelect.value || "default",
+            comma_pause: parseFloat(adv.comma_pause) || 0.30,
+            sentence_pause: parseFloat(adv.sentence_pause) || 0.50,
+            segment_pause: parseFloat(adv.segment_pause) || 0.30,
+            strip_special_chars: !!adv.strip_special_chars,
+            max_chars_per_line: parseInt(adv.max_chars_per_line, 10) || 200,
             normalize_text: normalizeTextToggle ? normalizeTextToggle.checked : true,
+            generate_srt: !!adv.generate_srt,
             custom_dict: customDict
           })
         });
@@ -1007,14 +1615,27 @@
           throw new Error(message);
         }
 
-        const audioBlob = await response.blob();
-        if (currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
-        currentAudioUrl = URL.createObjectURL(audioBlob);
+        const data = await response.json();
+        currentAudioUrl = data.audio_url;
         audioPlayer.src = currentAudioUrl;
         downloadLink.href = currentAudioUrl;
-        downloadLink.download = `voice-${new Date().toISOString().replace(/[:.]/g, "-")}.wav`;
+        const nowTs = new Date().toISOString().replace(/[:.]/g, "-");
+        downloadLink.download = `voice-${nowTs}.wav`;
+
+        if (downloadSrtLink) {
+          if (data.srt_url) {
+            downloadSrtLink.href = data.srt_url;
+            downloadSrtLink.download = `subtitles-${nowTs}.srt`;
+            downloadSrtLink.style.display = "inline-flex";
+          } else {
+            downloadSrtLink.style.display = "none";
+          }
+        }
+
+        renderSubtitlesTable(data.cues);
+
         audioPanel.classList.add("show");
-        showNotice("Tạo audio thành công! Bạn có thể nghe thử hoặc tải file WAV 48kHz.", "info");
+        showNotice("🎉 Tạo audio và phụ đề .SRT thành công! Bạn có thể nghe thử hoặc tải về.", "info");
 
         // Tự động phát
         audioPlayer.play().catch(() => {});
@@ -1055,6 +1676,7 @@
             <div class="history-actions">
               <button type="button" class="btn-icon" title="Nghe lại" onclick="playHistoryItem('${item.url}')">▶</button>
               <a class="btn-icon" title="Tải file WAV" href="${item.url}" download="${item.filename}">↓</a>
+              ${item.srt_url ? `<a class="btn-icon" title="Tải phụ đề SRT" href="${item.srt_url}" download="${item.filename.replace(/\.[^/.]+$/, '')}.srt" style="color:#7dd3fc;">📝</a>` : ''}
               <button type="button" class="btn-icon" title="Xóa" onclick="deleteHistoryItem('${item.filename}')">×</button>
             </div>
           `;
@@ -1330,7 +1952,8 @@
     };
 
     // Close modals on outside click
-    [cloneModal, dictModal].forEach(m => {
+    [cloneModal, dictModal, advanceModal].forEach(m => {
+      if (!m) return;
       m.addEventListener("click", (e) => {
         if (e.target === m) m.classList.remove("open");
       });
