@@ -24,6 +24,14 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from tts_engine import VoiceCloner
+from multilingual_engine import (
+    is_international_voice,
+    get_international_languages,
+    get_international_voices,
+    generate_multilingual_speech,
+    CURATED_INTERNATIONAL_VOICES,
+    VOICE_MAP as INT_VOICE_MAP,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = BASE_DIR / "outputs"
@@ -197,10 +205,27 @@ def get_all_voices() -> Dict[str, Dict[str, Any]]:
                 "ref_text": "",
                 "is_builtin": True,
             }
-        _CACHED_VOICES = catalog
     except Exception as e:
         print(f"⚠️ Chưa thể nạp danh sách preset voices: {e}")
 
+    # 3. Đăng ký các giọng đọc quốc tế chuẩn bản xứ (Anh, Trung, Nhật, Hàn, Pháp, Đức...)
+    for iv in CURATED_INTERNATIONAL_VOICES:
+        catalog[iv["id"]] = {
+            "id": iv["id"],
+            "name": iv["name"],
+            "description": iv["description"],
+            "gender": iv["gender"],
+            "region": iv["lang_name"],
+            "category": f"🌐 {iv['lang_name']}",
+            "is_clone": False,
+            "is_international": True,
+            "lang": iv["lang"],
+            "audio_path": None,
+            "ref_text": "",
+            "is_builtin": True,
+        }
+
+    _CACHED_VOICES = catalog
     return catalog
 
 
@@ -273,7 +298,7 @@ def list_voices():
 
 @app.get("/voices/{voice_id}/preview")
 @app.get("/api/voices/{voice_id}/preview")
-def preview_voice(voice_id: str):
+async def preview_voice(voice_id: str):
     """Cung cấp audio nghe thử giọng đọc (có cơ chế cache tức thì)."""
     all_voices = get_all_voices()
     if voice_id not in all_voices:
@@ -299,7 +324,45 @@ def preview_voice(voice_id: str):
     if cached_preview.exists() and cached_preview.stat().st_size > 1024:
         return FileResponse(str(cached_preview), media_type="audio/wav")
 
-    # 3. Tự động sinh audio mẫu ngắn gọn (~1.5s - 2s)
+    # 3. Nếu là giọng quốc tế
+    if is_international_voice(voice_id):
+        sample_text = f"Hello! This is a voice preview of {voice_info['name']} on Voice Studio Pro."
+        if voice_id.startswith("zh-"):
+            sample_text = f"您好！这是 {voice_info['name']} 在系统上的声音试听样本。"
+        elif voice_id.startswith("ja-"):
+            sample_text = f"こんにちは！これは {voice_info['name']} の音声プレビューです。"
+        elif voice_id.startswith("ko-"):
+            sample_text = f"안녕하세요! 이것은 {voice_info['name']} 목소리 샘플입니다."
+        elif voice_id.startswith("fr-"):
+            sample_text = f"Bonjour! Ceci est un aperçu de la voix {voice_info['name']}."
+        elif voice_id.startswith("de-"):
+            sample_text = f"Hallo! Dies ist eine Hörprobe von {voice_info['name']}."
+        elif voice_id.startswith("es-"):
+            sample_text = f"¡Hola! Esta es una muestra de la voz de {voice_info['name']}."
+        elif voice_id.startswith("ru-"):
+            sample_text = f"Здравствуйте! Это образец голоса {voice_info['name']}."
+        elif voice_id.startswith("th-"):
+            sample_text = f"สวัสดีค่ะ นี่คือตัวอย่างเสียงของ {voice_info['name']}"
+
+        try:
+            await generate_multilingual_speech(
+                text=sample_text,
+                voice_id=voice_id,
+                output_path=str(cached_preview),
+                speed=1.0,
+                pitch=0.0,
+                speaker_boost=True,
+                generate_srt=False,
+            )
+            if cached_preview.exists():
+                return FileResponse(str(cached_preview), media_type="audio/wav")
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Lỗi khi tạo audio nghe thử quốc tế: {str(exc)}",
+            ) from exc
+
+    # 4. Tự động sinh audio mẫu tiếng Việt (~1.5s - 2s)
     try:
         cloner = get_cloner()
         sample_text = f"Xin chào, tôi là giọng đọc {voice_info['name']} trên hệ thống Voice Studio."
@@ -320,6 +383,18 @@ def preview_voice(voice_id: str):
         ) from exc
 
     raise HTTPException(status_code=404, detail="Không thể tạo nghe thử cho giọng này.")
+
+
+@app.get("/api/multilingual/languages")
+def list_multilingual_languages():
+    """Lấy danh sách các ngôn ngữ quốc tế hỗ trợ."""
+    return {"status": "ok", "languages": get_international_languages()}
+
+
+@app.get("/api/multilingual/voices")
+def list_multilingual_voices(lang: Optional[str] = None):
+    """Lấy danh sách các giọng quốc tế theo ngôn ngữ."""
+    return {"status": "ok", "voices": get_international_voices(lang)}
 
 
 @app.post("/api/voices/clone")
@@ -521,7 +596,7 @@ def clear_all_audio_history():
 
 @app.post("/synthesize")
 @app.post("/api/synthesize")
-def synthesize_speech(req: SynthesisRequest, background_tasks: BackgroundTasks):
+async def synthesize_speech(req: SynthesisRequest, background_tasks: BackgroundTasks):
     if not req.text or not req.text.strip():
         raise HTTPException(status_code=400, detail="Nội dung văn bản không được để trống.")
 
@@ -564,36 +639,54 @@ def synthesize_speech(req: SynthesisRequest, background_tasks: BackgroundTasks):
     output_filename = OUTPUT_DIR / f"{uuid.uuid4()}.wav"
     output_srt_path = output_filename.with_suffix(".srt")
 
-    try:
-        cloner = get_cloner()
-        result = cloner.generate(
-            gen_text=req.text,
-            voice_id=req.voice_id if not voice_info["is_clone"] else None,
-            ref_audio_path=voice_info["audio_path"] if voice_info["is_clone"] else None,
-            ref_text=voice_info.get("ref_text", ""),
-            output_path=str(output_filename),
-            output_srt_path=str(output_srt_path),
-            speed=speed,
-            pitch=pitch,
-            stability=req.stability,
-            similarity=req.similarity,
-            speaker_boost=req.speaker_boost,
-            temperature=temperature,
-            pause_style=pause_style,
-            comma_pause=req.comma_pause,
-            sentence_pause=req.sentence_pause,
-            segment_pause=req.segment_pause,
-            strip_special_chars=req.strip_special_chars,
-            max_chars_per_line=req.max_chars_per_line,
-            normalize_text=normalize_text,
-            generate_srt=req.generate_srt,
-            custom_dict=req.custom_dict,
-        )
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Lỗi trong quá trình tạo âm thanh: {str(exc)}",
-        ) from exc
+    if is_international_voice(req.voice_id):
+        try:
+            result = await generate_multilingual_speech(
+                text=req.text,
+                voice_id=req.voice_id,
+                output_path=str(output_filename),
+                output_srt_path=str(output_srt_path),
+                speed=speed,
+                pitch=pitch,
+                speaker_boost=req.speaker_boost,
+                generate_srt=req.generate_srt,
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Lỗi tạo âm thanh quốc tế: {str(exc)}",
+            ) from exc
+    else:
+        try:
+            cloner = get_cloner()
+            result = cloner.generate(
+                gen_text=req.text,
+                voice_id=req.voice_id if not voice_info["is_clone"] else None,
+                ref_audio_path=voice_info["audio_path"] if voice_info["is_clone"] else None,
+                ref_text=voice_info.get("ref_text", ""),
+                output_path=str(output_filename),
+                output_srt_path=str(output_srt_path),
+                speed=speed,
+                pitch=pitch,
+                stability=req.stability,
+                similarity=req.similarity,
+                speaker_boost=req.speaker_boost,
+                temperature=temperature,
+                pause_style=pause_style,
+                comma_pause=req.comma_pause,
+                sentence_pause=req.sentence_pause,
+                segment_pause=req.segment_pause,
+                strip_special_chars=req.strip_special_chars,
+                max_chars_per_line=req.max_chars_per_line,
+                normalize_text=normalize_text,
+                generate_srt=req.generate_srt,
+                custom_dict=req.custom_dict,
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Lỗi trong quá trình tạo âm thanh: {str(exc)}",
+            ) from exc
 
     audio_path = result["audio_path"] if isinstance(result, dict) else str(result)
     srt_path = result.get("srt_path") if isinstance(result, dict) else None
@@ -678,7 +771,7 @@ def extract_preview_text(full_text: str, max_words: int = 35) -> str:
 
 @app.post("/synthesize-preview")
 @app.post("/api/synthesize-preview")
-def synthesize_preview_snippet(req: SynthesisRequest, background_tasks: BackgroundTasks):
+async def synthesize_preview_snippet(req: SynthesisRequest, background_tasks: BackgroundTasks):
     """Tạo audio nghe thử ~10 giây đoạn đầu của văn bản người dùng."""
     if not req.text or not req.text.strip():
         raise HTTPException(status_code=400, detail="Vui lòng nhập văn bản trước khi nghe thử.")
@@ -725,34 +818,51 @@ def synthesize_preview_snippet(req: SynthesisRequest, background_tasks: Backgrou
     voice_info = all_voices[req.voice_id]
     output_filename = OUTPUT_DIR / f"snippet_{uuid.uuid4().hex[:8]}.wav"
 
-    try:
-        cloner = get_cloner()
-        result = cloner.generate(
-            gen_text=preview_text,
-            voice_id=req.voice_id if not voice_info["is_clone"] else None,
-            ref_audio_path=voice_info["audio_path"] if voice_info["is_clone"] else None,
-            ref_text=voice_info.get("ref_text", ""),
-            output_path=str(output_filename),
-            speed=speed,
-            pitch=pitch,
-            stability=req.stability,
-            similarity=req.similarity,
-            speaker_boost=req.speaker_boost,
-            temperature=temperature,
-            pause_style=pause_style,
-            comma_pause=req.comma_pause,
-            sentence_pause=req.sentence_pause,
-            segment_pause=req.segment_pause,
-            strip_special_chars=req.strip_special_chars,
-            normalize_text=normalize_text,
-            generate_srt=False,
-            custom_dict=req.custom_dict,
-        )
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Lỗi tạo audio nghe thử: {str(exc)}",
-        ) from exc
+    if is_international_voice(req.voice_id):
+        try:
+            result = await generate_multilingual_speech(
+                text=preview_text,
+                voice_id=req.voice_id,
+                output_path=str(output_filename),
+                speed=speed,
+                pitch=pitch,
+                speaker_boost=req.speaker_boost,
+                generate_srt=False,
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Lỗi tạo audio nghe thử quốc tế: {str(exc)}",
+            ) from exc
+    else:
+        try:
+            cloner = get_cloner()
+            result = cloner.generate(
+                gen_text=preview_text,
+                voice_id=req.voice_id if not voice_info["is_clone"] else None,
+                ref_audio_path=voice_info["audio_path"] if voice_info["is_clone"] else None,
+                ref_text=voice_info.get("ref_text", ""),
+                output_path=str(output_filename),
+                speed=speed,
+                pitch=pitch,
+                stability=req.stability,
+                similarity=req.similarity,
+                speaker_boost=req.speaker_boost,
+                temperature=temperature,
+                pause_style=pause_style,
+                comma_pause=req.comma_pause,
+                sentence_pause=req.sentence_pause,
+                segment_pause=req.segment_pause,
+                strip_special_chars=req.strip_special_chars,
+                normalize_text=normalize_text,
+                generate_srt=False,
+                custom_dict=req.custom_dict,
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Lỗi tạo audio nghe thử: {str(exc)}",
+            ) from exc
 
     audio_path = result["audio_path"] if isinstance(result, dict) else str(result)
     background_tasks.add_task(cleanup_old_outputs)
