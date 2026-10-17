@@ -14,10 +14,13 @@ import vieneu_utils.core_utils as core_utils
 
 # Các cấu hình khoảng nghỉ tự nhiên theo ngữ cảnh
 PAUSE_PROFILES = {
-    "natural": {"para": 0.70, "sentence": 0.50, "minor": 0.30},     # Tự nhiên, đàm thoại chuẩn
-    "relaxed": {"para": 0.95, "sentence": 0.75, "minor": 0.45},     # Thư thả, sâu lắng (sách nói, podcast)
-    "expressive": {"para": 0.85, "sentence": 0.60, "minor": 0.35},  # Diễn cảm, rõ ràng từng vế
-    "compact": {"para": 0.45, "sentence": 0.30, "minor": 0.18},     # Liền mạch, nhanh gọn (tin vắn, quảng cáo)
+    "natural": {"para": 0.70, "sentence": 0.50, "minor": 0.30},       # Mặc định: Tự nhiên, đàm thoại chuẩn
+    "relaxed": {"para": 0.95, "sentence": 0.75, "minor": 0.45},       # Thư thả, sâu lắng (sách nói, podcast)
+    "expressive": {"para": 0.85, "sentence": 0.60, "minor": 0.35},    # Diễn cảm, rõ ràng từng vế (kể chuyện)
+    "compact": {"para": 0.45, "sentence": 0.30, "minor": 0.18},       # Nhanh gọn, liền mạch (tin tức, video ngắn)
+    "dramatic": {"para": 1.25, "sentence": 0.95, "minor": 0.55},      # Lắng đọng, kịch tính (phim ảnh, tự sự tâm trạng)
+    "presentation": {"para": 0.75, "sentence": 0.55, "minor": 0.38},  # Dõng dạc, rành mạch (thuyết trình, bài giảng)
+    "rapid": {"para": 0.35, "sentence": 0.22, "minor": 0.12},         # Nhịp dồn, siêu tốc (quảng cáo xả hàng, tin nóng)
 }
 
 PAUSE_REGEX = re.compile(r"\[(?:ngh[iỉ]|pause):([0-9.]+)s?\]", re.IGNORECASE)

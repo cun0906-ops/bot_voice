@@ -1,5 +1,6 @@
 import io
 import os
+import re
 import sys
 import time
 import uuid
@@ -148,7 +149,7 @@ def get_all_voices() -> Dict[str, Dict[str, Any]]:
 class SynthesisRequest(BaseModel):
     text: str
     voice_id: str = "van_thanh_tri"
-    speed: float = 1.05
+    speed: float = 1.0
     temperature: float = 0.8
     pause_style: str = "natural"
 
@@ -288,7 +289,8 @@ def synthesize_speech(req: SynthesisRequest, background_tasks: BackgroundTasks):
         temperature = 0.8
 
     pause_style = str(req.pause_style).lower() if req.pause_style else "natural"
-    if pause_style not in ["natural", "relaxed", "expressive", "compact"]:
+    valid_pause_styles = ["natural", "relaxed", "expressive", "compact", "dramatic", "presentation", "rapid"]
+    if pause_style not in valid_pause_styles:
         pause_style = "natural"
 
     voice_info = all_voices[req.voice_id]
@@ -313,11 +315,94 @@ def synthesize_speech(req: SynthesisRequest, background_tasks: BackgroundTasks):
             detail=f"Lỗi trong quá trình tạo âm thanh: {str(exc)}",
         ) from exc
 
-
-
     # Thêm tác vụ nền dọn dẹp file audio cũ
     background_tasks.add_task(cleanup_old_outputs)
 
+    return FileResponse(result_path, media_type="audio/wav")
+
+
+def extract_preview_text(full_text: str, max_words: int = 35) -> str:
+    """Trích xuất 1-2 câu đầu tiên (~10 giây đọc, tối đa 35 từ) từ văn bản người dùng để nghe thử nhanh."""
+    clean = full_text.strip()
+    if not clean:
+        return ""
+    parts = re.split(r"(?<=[.!?…\n])\s+", clean)
+    collected = []
+    word_count = 0
+    for p in parts:
+        p_strip = p.strip()
+        if not p_strip:
+            continue
+        p_words = len(p_strip.split())
+        if word_count == 0 or (word_count + p_words <= max_words):
+            collected.append(p_strip)
+            word_count += p_words
+        else:
+            break
+    if not collected:
+        words = clean.split()
+        return " ".join(words[:max_words])
+    return " ".join(collected)
+
+
+@app.post("/synthesize-preview")
+@app.post("/api/synthesize-preview")
+def synthesize_preview_snippet(req: SynthesisRequest, background_tasks: BackgroundTasks):
+    """Tạo audio nghe thử ~10 giây đoạn đầu của văn bản người dùng."""
+    if not req.text or not req.text.strip():
+        raise HTTPException(status_code=400, detail="Vui lòng nhập văn bản trước khi nghe thử.")
+
+    preview_text = extract_preview_text(req.text, max_words=35)
+    if not preview_text:
+        preview_text = req.text[:140]
+
+    all_voices = get_all_voices()
+    if req.voice_id not in all_voices:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Không tìm thấy giọng đọc '{req.voice_id}'.",
+        )
+
+    try:
+        speed = float(req.speed)
+        speed = max(0.65, min(1.75, speed))
+    except (TypeError, ValueError):
+        speed = 1.0
+
+    try:
+        temperature = float(req.temperature)
+        temperature = max(0.3, min(1.2, temperature))
+    except (TypeError, ValueError):
+        temperature = 0.8
+
+    pause_style = str(req.pause_style).lower() if req.pause_style else "natural"
+    valid_pause_styles = ["natural", "relaxed", "expressive", "compact", "dramatic", "presentation", "rapid"]
+    if pause_style not in valid_pause_styles:
+        pause_style = "natural"
+
+    voice_info = all_voices[req.voice_id]
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    output_filename = OUTPUT_DIR / f"snippet_{uuid.uuid4().hex[:8]}.wav"
+
+    try:
+        cloner = get_cloner()
+        result_path = cloner.generate(
+            gen_text=preview_text,
+            voice_id=req.voice_id if not voice_info["is_clone"] else None,
+            ref_audio_path=voice_info["audio_path"] if voice_info["is_clone"] else None,
+            ref_text=voice_info.get("ref_text", ""),
+            output_path=str(output_filename),
+            speed=speed,
+            temperature=temperature,
+            pause_style=pause_style,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Lỗi tạo audio nghe thử: {str(exc)}",
+        ) from exc
+
+    background_tasks.add_task(cleanup_old_outputs)
     return FileResponse(result_path, media_type="audio/wav")
 
 

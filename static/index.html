@@ -109,6 +109,22 @@
       border-color: #52e0bd;
       box-shadow: 0 0 10px rgba(82, 224, 189, 0.5);
     }
+    .snippet-btn {
+      color: #52e0bd;
+      background: rgba(82, 224, 189, 0.12);
+      border: 1px solid rgba(82, 224, 189, 0.4);
+      gap: 7px;
+    }
+    .snippet-btn:hover:not(:disabled) {
+      background: rgba(82, 224, 189, 0.24);
+      border-color: #52e0bd;
+    }
+    .snippet-btn.playing {
+      background: #52e0bd;
+      color: #061b18;
+      border-color: #52e0bd;
+      box-shadow: 0 0 14px rgba(82, 224, 189, 0.5);
+    }
     .notice { display: none; margin-top: 16px; padding: 11px 13px; border-radius: 9px; font-size: 12px; line-height: 1.5; }
     .notice.show { display: block; }
     .notice.error { color: #ffc5ca; background: rgba(174, 48, 67, .18); border: 1px solid rgba(239, 106, 119, .3); }
@@ -195,12 +211,12 @@
             <div class="field">
               <div class="speed-head">
                 <label for="speedRange">Tốc độ đọc</label>
-                <span id="speedValue" class="speed-value">1.05x (Khuyên dùng)</span>
+                <span id="speedValue" class="speed-value">1.00x (Mặc định - Chuẩn)</span>
               </div>
-              <input id="speedRange" name="speed" type="range" min="0.8" max="1.35" step="0.05" value="1.05">
+              <input id="speedRange" name="speed" type="range" min="0.8" max="1.35" step="0.05" value="1.0">
               <div class="range-labels">
                 <span>0.8x</span>
-                <span>1.0x Chuẩn</span>
+                <span>1.0x (Mặc định)</span>
                 <span>1.05x</span>
                 <span>1.35x</span>
               </div>
@@ -209,27 +225,41 @@
             <div class="field">
               <label for="emotionSelect">Độ biểu cảm / Hồn giọng</label>
               <select id="emotionSelect" name="temperature">
-                <option value="0.8" selected>✨ Tự nhiên & Truyền cảm (0.8 - Chuẩn)</option>
-                <option value="0.95">🔥 Giàu cảm xúc, sinh động (0.95)</option>
-                <option value="0.65">🎙️ Điềm đạm, rõ chữ (0.65 - Tin tức)</option>
+                <option value="0.8" selected>✨ Mặc định (Tự nhiên & Truyền cảm - 0.8)</option>
+                <option value="0.85">🌸 Ấm áp, sâu lắng (0.85 - Podcast, tự sự)</option>
+                <option value="0.95">🔥 Giàu cảm xúc, sinh động (0.95 - Quảng cáo, review)</option>
+                <option value="1.05">🎭 Kịch tính, biểu cảm cao (1.05 - Hoạt hình, kịch nói)</option>
+                <option value="0.70">🎙️ Điềm đạm, rõ chữ (0.70 - Bản tin thời sự)</option>
+                <option value="0.60">📖 Nghiêm túc, trang trọng (0.60 - Thuyết minh tài liệu)</option>
+                <option value="0.50">⚖️ Đều giọng, trung tính (0.50 - Tổng đài IVR, đọc số liệu)</option>
               </select>
-              <div style="margin-top:6px; font-size:11px; color:#8fa1ba;">Ngữ điệu luyến láy & trầm bổng</div>
+              <div style="margin-top:6px; font-size:11px; color:#8fa1ba;">Ngữ điệu luyến láy & độ trầm bổng</div>
             </div>
 
             <div class="field">
               <label for="pauseSelect">Nhịp ngắt nghỉ tự nhiên</label>
               <select id="pauseSelect" name="pause_style">
-                <option value="natural" selected>🌿 Tự nhiên (0.5s - Đàm thoại chuẩn)</option>
-                <option value="relaxed">📖 Thư thả, sâu lắng (0.75s - Sách nói, podcast)</option>
-                <option value="expressive">🎭 Diễn cảm, ngắt rõ vế (0.6s - Kể chuyện)</option>
+                <option value="natural" selected>🌿 Mặc định (Tự nhiên - 0.5s đàm thoại chuẩn)</option>
+                <option value="relaxed">📖 Thư thả, sâu lắng (0.75s - Sách nói, podcast đêm)</option>
+                <option value="expressive">🎭 Diễn cảm, ngắt rõ vế (0.6s - Kể chuyện, diễn thuyết)</option>
+                <option value="presentation">🎓 Dõng dạc, rành mạch (0.55s - Thuyết trình, bài giảng)</option>
+                <option value="dramatic">🎬 Lắng đọng, kịch tính (0.95s - Phim, tâm trạng)</option>
                 <option value="compact">⚡ Nhanh, liền mạch (0.3s - Tin vắn, video ngắn)</option>
+                <option value="rapid">🚀 Siêu tốc, nhịp dồn (0.22s - Quảng cáo xả hàng, tin nóng)</option>
               </select>
-              <div style="margin-top:6px; font-size:11px; color:#8fa1ba;">Khoảng dừng lấy hơi giữa các câu</div>
+              <div style="margin-top:6px; font-size:11px; color:#8fa1ba;">Khoảng dừng lấy hơi tự nhiên giữa các câu</div>
             </div>
           </div>
 
           <div class="actions">
-            <button id="submitButton" class="primary" type="submit"><span aria-hidden="true">♫</span><span id="buttonText">Tạo giọng nói</span></button>
+            <button id="previewSnippetBtn" class="snippet-btn" type="button" title="Nghe thử nhanh ~10 giây đầu của đoạn văn bản này">
+              <span id="previewSnippetIcon">🎧</span>
+              <span id="previewSnippetText">Nghe thử 10s đoạn đầu</span>
+            </button>
+            <button id="submitButton" class="primary" type="submit">
+              <span aria-hidden="true">♫</span>
+              <span id="buttonText">Tạo toàn bộ giọng nói</span>
+            </button>
             <button id="clearButton" class="secondary" type="button">Xóa nội dung</button>
           </div>
           <div id="notice" class="notice" role="status" aria-live="polite"></div>
@@ -247,7 +277,7 @@
         <div class="tip">
           <strong>1. Dấu câu quyết định nhịp thở:</strong> Dấu phẩy (,), dấu chấm (.), dấu ba chấm (...) và xuống dòng giúp AI tự động ngắt nghỉ lấy hơi như người thật.<br><br>
           <strong>2. Chèn nhịp thở & ngắt nghỉ chủ động:</strong> Nhấn nút <code>[lấy hơi]</code> hoặc <code>[nghỉ:0.5s]</code>, <code>[nghỉ:1s]</code> vào bất kỳ vị trí nào để câu nói có chiều sâu và chân thật.<br><br>
-          <strong>3. Tốc độ & Giọng hợp cảnh:</strong> Tốc độ 1.05x kết hợp phong cách nhịp nghỉ <em>Tự nhiên</em> hoặc <em>Thư thả</em> cho cảm giác nghe cuốn hút nhất.
+          <strong>3. Nghe thử trước khi tạo:</strong> Bấm nút <code>Nghe thử 10s</code> để kiểm tra nhanh ngữ điệu và tốc độ chuẩn 1.0x trước khi bấm tạo trọn vẹn văn bản.
         </div>
         <div class="facts">
           <div class="fact"><span>Trạng thái model</span><span id="modelStatus">Đang kiểm tra</span></div>
@@ -397,12 +427,101 @@
     const speedRange = document.getElementById("speedRange");
     const speedValue = document.getElementById("speedValue");
     const emotionSelect = document.getElementById("emotionSelect");
+    const pauseSelect = document.getElementById("pauseSelect");
+    const previewSnippetBtn = document.getElementById("previewSnippetBtn");
+    const previewSnippetIcon = document.getElementById("previewSnippetIcon");
+    const previewSnippetText = document.getElementById("previewSnippetText");
+    let isSnippetPlaying = false;
+
+    function stopSnippetPreview() {
+      if (previewAudioPlayer) {
+        previewAudioPlayer.pause();
+        previewAudioPlayer.currentTime = 0;
+      }
+      isSnippetPlaying = false;
+      if (previewSnippetBtn) {
+        previewSnippetBtn.classList.remove("playing");
+        previewSnippetBtn.disabled = false;
+      }
+      if (previewSnippetIcon) previewSnippetIcon.textContent = "🎧";
+      if (previewSnippetText) previewSnippetText.textContent = "Nghe thử 10s đoạn đầu";
+    }
+
+    if (previewSnippetBtn) {
+      previewSnippetBtn.addEventListener("click", async () => {
+        if (!textInput.value.trim()) {
+          showNotice("Bạn vui lòng nhập văn bản trước khi nghe thử nhé.", "error");
+          textInput.focus();
+          return;
+        }
+
+        if (isSnippetPlaying) {
+          stopSnippetPreview();
+          return;
+        }
+
+        stopPreview();
+
+        previewSnippetBtn.disabled = true;
+        previewSnippetIcon.textContent = "⏳";
+        previewSnippetText.textContent = "Đang tạo đoạn 10s...";
+        notice.className = "notice";
+
+        try {
+          const response = await fetch("/synthesize-preview", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              text: textInput.value.trim(),
+              voice_id: voiceSelect.value,
+              speed: parseFloat(speedRange.value) || 1.0,
+              temperature: parseFloat(emotionSelect.value) || 0.8,
+              pause_style: pauseSelect.value || "natural"
+            })
+          });
+
+          if (!response.ok) {
+            let message = "Không thể tạo bản nghe thử 10s.";
+            try {
+              const detail = await response.json();
+              message = detail.detail || message;
+            } catch {
+              const textErr = await response.text();
+              if (textErr) message = textErr;
+            }
+            throw new Error(message);
+          }
+
+          const audioBlob = await response.blob();
+          const blobUrl = URL.createObjectURL(audioBlob);
+
+          previewAudioPlayer.src = blobUrl;
+          await previewAudioPlayer.play();
+
+          isSnippetPlaying = true;
+          previewSnippetBtn.disabled = false;
+          previewSnippetBtn.classList.add("playing");
+          previewSnippetIcon.textContent = "⏹";
+          previewSnippetText.textContent = "Dừng nghe thử";
+
+          showNotice("🎧 Đang phát thử ~10 giây đoạn đầu. Nếu bạn thấy ưng ý, hãy bấm 'Tạo toàn bộ giọng nói' bên dưới nhé!", "info");
+
+          previewAudioPlayer.onended = () => {
+            stopSnippetPreview();
+            URL.revokeObjectURL(blobUrl);
+          };
+        } catch (error) {
+          stopSnippetPreview();
+          showNotice(error.message || "Có lỗi khi kết nối máy chủ nghe thử.", "error");
+        }
+      });
+    }
 
     speedRange.addEventListener("input", () => {
       const val = parseFloat(speedRange.value);
       let desc = "";
-      if (val === 1.0) desc = " (Chuẩn)";
-      else if (val === 1.05) desc = " (Khuyên dùng)";
+      if (val === 1.0) desc = " (Mặc định - Chuẩn)";
+      else if (val === 1.05) desc = " (Tự nhiên)";
       else if (val > 1.05) desc = " (Nhanh)";
       else desc = " (Chậm)";
       speedValue.textContent = `${val.toFixed(2)}x${desc}`;
@@ -428,6 +547,8 @@
       document.getElementById("charCount").textContent = `${textInput.value.length} ký tự`;
     });
     document.getElementById("clearButton").addEventListener("click", () => {
+      stopPreview();
+      stopSnippetPreview();
       textInput.value = "";
       textInput.dispatchEvent(new Event("input"));
       notice.className = "notice";
@@ -436,6 +557,8 @@
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
+      stopPreview();
+      stopSnippetPreview();
       if (!textInput.value.trim()) {
         showNotice("Bạn nhập nội dung trước nhé.", "error");
         textInput.focus();
@@ -452,7 +575,7 @@
           body: JSON.stringify({
             text: textInput.value.trim(),
             voice_id: voiceSelect.value,
-            speed: parseFloat(speedRange.value) || 1.05,
+            speed: parseFloat(speedRange.value) || 1.0,
             temperature: parseFloat(emotionSelect.value) || 0.8,
             pause_style: document.getElementById("pauseSelect").value || "natural"
           })
