@@ -1,4 +1,5 @@
 import io
+import json
 import os
 import re
 import sys
@@ -8,15 +9,18 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import numpy as np
+
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 if hasattr(sys.stdout, "buffer"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 if hasattr(sys.stderr, "buffer"):
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from tts_engine import VoiceCloner
@@ -24,18 +28,16 @@ from tts_engine import VoiceCloner
 BASE_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = BASE_DIR / "outputs"
 VOICES_DIR = BASE_DIR / "voices"
+CUSTOM_DIR = VOICES_DIR / "custom"
+HISTORY_FILE = OUTPUT_DIR / "history.json"
 
-# Dọn dẹp file dính tên cũ nếu còn tồn tại
-LEGACY_STRAY_FILE = BASE_DIR / "voicesvan_thanh_tri.wav"
-if LEGACY_STRAY_FILE.exists():
-    try:
-        LEGACY_STRAY_FILE.unlink(missing_ok=True)
-    except Exception:
-        pass
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+VOICES_DIR.mkdir(parents=True, exist_ok=True)
+CUSTOM_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def cleanup_old_outputs(max_age_seconds: int = 3600):
-    """Tự động dọn dẹp các file audio trong outputs/ cũ hơn 1 tiếng để giải phóng đĩa."""
+def cleanup_old_outputs(max_age_seconds: int = 7200):
+    """Tự động dọn dẹp các file audio trong outputs/ cũ hơn 2 tiếng để giải phóng đĩa."""
     try:
         now = time.time()
         if OUTPUT_DIR.exists():
@@ -46,9 +48,43 @@ def cleanup_old_outputs(max_age_seconds: int = 3600):
         pass
 
 
+def record_history(file_path: Path, voice_id: str, voice_name: str, text: str, speed: float, pitch: float):
+    """Lưu trữ lịch sử các bản audio đã tạo."""
+    try:
+        import soundfile as sf
+        info = sf.info(str(file_path))
+        duration = round(info.duration, 1)
+    except Exception:
+        duration = 0.0
+
+    entry = {
+        "id": file_path.stem,
+        "filename": file_path.name,
+        "url": f"/outputs/{file_path.name}",
+        "voice_id": voice_id,
+        "voice_name": voice_name,
+        "text_snippet": (text[:80] + "...") if len(text) > 80 else text,
+        "full_text": text,
+        "duration": duration,
+        "size_kb": round(file_path.stat().st_size / 1024, 1),
+        "created_at": time.strftime("%H:%M %d/%m/%Y"),
+        "speed": speed,
+        "pitch": pitch,
+    }
+
+    try:
+        data = []
+        if HISTORY_FILE.exists():
+            data = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
+        data.insert(0, entry)
+        data = data[:50]  # Giữ tối đa 50 bản gần nhất
+        HISTORY_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception as e:
+        print(f"⚠️ Không thể cập nhật history.json: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Khởi tạo model và warmup
     print("🚀 Đang khởi động Voice Studio Engine...")
     try:
         get_cloner()
@@ -59,7 +95,7 @@ async def lifespan(app: FastAPI):
     print("🛑 Đang tắt Voice Studio Engine...")
 
 
-app = FastAPI(title="Voice Studio - Vietnamese Voice Cloning Engine", lifespan=lifespan)
+app = FastAPI(title="Voice Studio Pro - Vietnamese Voice Cloning Engine", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -67,6 +103,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Phục vụ thư mục outputs cho phép tải và phát audio tĩnh
+app.mount("/outputs", StaticFiles(directory=str(OUTPUT_DIR)), name="outputs")
 
 app.state.cloner = None
 _CACHED_VOICES: Optional[Dict[str, Dict[str, Any]]] = None
@@ -79,30 +118,48 @@ def get_cloner() -> VoiceCloner:
 
 
 def get_all_voices() -> Dict[str, Dict[str, Any]]:
-    """Tổng hợp danh sách tất cả các giọng (Clone + Built-in Presets). Có cache để phản hồi siêu tốc."""
+    """Tổng hợp danh sách tất cả các giọng (Clone + Built-in Presets). Có cache để phản hồi tức thì."""
     global _CACHED_VOICES
     if _CACHED_VOICES is not None and len(_CACHED_VOICES) > 1:
         return _CACHED_VOICES
 
     catalog: Dict[str, Dict[str, Any]] = {}
 
-    # 1. Các giọng Clone riêng từ file mẫu trong voices/
-    sample_short = VOICES_DIR / "van_thanh_tri_short.wav"
-    sample_full = VOICES_DIR / "van_thanh_tri.wav"
-    primary_audio = sample_short if sample_short.exists() else sample_full
+    # 1. Các giọng clone từ file voices/custom_voices.json
+    custom_json = VOICES_DIR / "custom_voices.json"
+    if custom_json.exists():
+        try:
+            custom_list = json.loads(custom_json.read_text(encoding="utf-8"))
+            for v in custom_list:
+                audio_p = Path(v.get("audio_path", ""))
+                if not audio_p.is_absolute():
+                    audio_p = BASE_DIR / audio_p
+                if audio_p.exists():
+                    v_entry = dict(v)
+                    v_entry["audio_path"] = str(audio_p)
+                    v_entry["category"] = v.get("category") or "Giọng Clone Của Bạn"
+                    catalog[v["id"]] = v_entry
+        except Exception as e:
+            print(f"⚠️ Lỗi đọc custom_voices.json: {e}")
 
-    if primary_audio.exists():
-        catalog["van_thanh_tri"] = {
-            "id": "van_thanh_tri",
-            "name": "Vân Thanh Trì",
-            "description": "Nữ · Bắc · Giọng doanh nghiệp mạ kẽm An Đại Phát",
-            "gender": "female",
-            "region": "Bắc",
-            "category": "Doanh nghiệp (Clone)",
-            "is_clone": True,
-            "audio_path": str(primary_audio),
-            "ref_text": "Dạ, em là Vân ở bên công ty An Đại Phát ở Thanh Trì, Hà Nội chuyên mạ kẽm điện phân và nhúng nóng ạ.",
-        }
+    # Fallback cho Vân Thanh Trì nếu chưa có trong custom_voices.json
+    if "van_thanh_tri" not in catalog:
+        sample_short = VOICES_DIR / "van_thanh_tri_short.wav"
+        sample_full = VOICES_DIR / "van_thanh_tri.wav"
+        primary_audio = sample_short if sample_short.exists() else sample_full
+        if primary_audio.exists():
+            catalog["van_thanh_tri"] = {
+                "id": "van_thanh_tri",
+                "name": "Vân Thanh Trì",
+                "description": "Nữ · Bắc · Giọng doanh nghiệp mạ kẽm An Đại Phát",
+                "gender": "female",
+                "region": "Bắc",
+                "category": "Doanh nghiệp (Clone)",
+                "is_clone": True,
+                "audio_path": str(primary_audio),
+                "ref_text": "Dạ, em là Vân ở bên công ty An Đại Phát ở Thanh Trì, Hà Nội chuyên mạ kẽm điện phân và nhúng nóng ạ.",
+                "is_builtin": True,
+            }
 
     # 2. Tích hợp tất cả các giọng mẫu có sẵn của VieNeu v3 Turbo
     try:
@@ -137,21 +194,24 @@ def get_all_voices() -> Dict[str, Dict[str, Any]]:
                 "is_clone": False,
                 "audio_path": None,
                 "ref_text": "",
+                "is_builtin": True,
             }
         _CACHED_VOICES = catalog
     except Exception as e:
-        print(f"⚠️ Chưa thể đọc danh sách preset voices: {e}")
+        print(f"⚠️ Chưa thể nạp danh sách preset voices: {e}")
 
     return catalog
-
 
 
 class SynthesisRequest(BaseModel):
     text: str
     voice_id: str = "van_thanh_tri"
     speed: float = 1.0
+    pitch: float = 0.0
     temperature: Any = "default"
     pause_style: str = "default"
+    normalize_text: bool = True
+    custom_dict: Optional[Dict[str, str]] = None
 
 
 @app.get("/health")
@@ -185,7 +245,7 @@ def favicon():
 @app.get("/api/voices")
 @app.get("/api/info")
 def list_voices():
-    """Lấy danh sách các giọng có thể chọn kèm thông tin phân loại (tương thích mọi phiên bản frontend)."""
+    """Lấy danh sách các giọng có thể chọn kèm thông tin phân loại."""
     all_voices = get_all_voices()
     voice_list = list(all_voices.values())
     base_voices = [v for v in voice_list if not v.get("is_clone")]
@@ -229,18 +289,7 @@ def preview_voice(voice_id: str):
     if cached_preview.exists() and cached_preview.stat().st_size > 1024:
         return FileResponse(str(cached_preview), media_type="audio/wav")
 
-    # 3. Tìm trong vieneu assets/samples
-    try:
-        import vieneu
-        vieneu_samples = Path(vieneu.__file__).parent / "assets" / "samples"
-        if vieneu_samples.exists():
-            for sample_wav in vieneu_samples.glob("*.wav"):
-                if voice_id.lower() in sample_wav.stem.lower():
-                    return FileResponse(str(sample_wav), media_type="audio/wav")
-    except Exception:
-        pass
-
-    # 4. Tự động sinh audio mẫu ngắn gọn (~1.5s - 2s)
+    # 3. Tự động sinh audio mẫu ngắn gọn (~1.5s - 2s)
     try:
         cloner = get_cloner()
         sample_text = f"Xin chào, tôi là giọng đọc {voice_info['name']} trên hệ thống Voice Studio."
@@ -261,6 +310,177 @@ def preview_voice(voice_id: str):
         ) from exc
 
     raise HTTPException(status_code=404, detail="Không thể tạo nghe thử cho giọng này.")
+
+
+@app.post("/api/voices/clone")
+async def clone_new_voice(
+    audio_file: UploadFile = File(...),
+    name: str = Form(...),
+    description: str = Form(""),
+    gender: str = Form("female"),
+    region: str = Form("Bắc"),
+    ref_text: str = Form(""),
+):
+    """Nhân bản một giọng nói mới từ file âm thanh người dùng tải lên."""
+    if not name or not name.strip():
+        raise HTTPException(status_code=400, detail="Vui lòng nhập tên cho giọng đọc.")
+
+    clean_name = name.strip()
+    safe_slug = re.sub(r"[^\w\-]+", "_", clean_name.lower()).strip("_")
+    voice_id = f"custom_{safe_slug}_{uuid.uuid4().hex[:6]}"
+
+    temp_path = CUSTOM_DIR / f"upload_{uuid.uuid4().hex[:6]}_{audio_file.filename}"
+    final_wav = CUSTOM_DIR / f"{voice_id}.wav"
+
+    try:
+        content = await audio_file.read()
+        if len(content) < 1024:
+            raise HTTPException(status_code=400, detail="File âm thanh quá nhỏ hoặc rỗng.")
+        temp_path.write_bytes(content)
+
+        # Chuyển đổi và chuẩn hóa thành file WAV 48kHz mono 16-bit
+        import soundfile as sf
+        import librosa
+        wav, sr = librosa.load(str(temp_path), sr=48000, mono=True)
+        max_amp = float(np.max(np.abs(wav)))
+        if max_amp > 1e-4:
+            wav = wav * (0.95 / max_amp)
+        sf.write(str(final_wav), wav, 48000, subtype="PCM_16")
+
+        # Đăng ký với cloner
+        cloner = get_cloner()
+        cloner.register_custom_voice(
+            voice_id=voice_id,
+            audio_path=str(final_wav),
+            description=description.strip() or f"{gender.title()} · {region}",
+            gender=gender,
+        )
+
+        # Lưu vào custom_voices.json
+        custom_json = VOICES_DIR / "custom_voices.json"
+        existing = []
+        if custom_json.exists():
+            try:
+                existing = json.loads(custom_json.read_text(encoding="utf-8"))
+            except Exception:
+                existing = []
+
+        new_voice_entry = {
+            "id": voice_id,
+            "name": clean_name,
+            "description": description.strip() or f"{gender.title()} · {region}",
+            "gender": gender,
+            "region": region,
+            "category": "Giọng Clone Của Bạn",
+            "is_clone": True,
+            "audio_path": str(final_wav),
+            "ref_text": ref_text.strip(),
+            "is_builtin": False,
+            "created_at": time.strftime("%H:%M %d/%m/%Y"),
+        }
+        existing.append(new_voice_entry)
+        custom_json.write_text(json.dumps(existing, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        # Xóa cache danh mục giọng để load lại
+        global _CACHED_VOICES
+        _CACHED_VOICES = None
+
+        return {
+            "status": "ok",
+            "message": f"Nhân bản thành công giọng '{clean_name}'!",
+            "voice": new_voice_entry,
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Lỗi khi xử lý file âm thanh: {str(exc)}") from exc
+    finally:
+        if temp_path.exists():
+            temp_path.unlink(missing_ok=True)
+
+
+@app.delete("/api/voices/{voice_id}")
+def delete_custom_voice(voice_id: str):
+    """Xóa một giọng clone do người dùng tạo."""
+    custom_json = VOICES_DIR / "custom_voices.json"
+    if not custom_json.exists():
+        raise HTTPException(status_code=404, detail="Không tìm thấy giọng cần xóa.")
+
+    try:
+        voices = json.loads(custom_json.read_text(encoding="utf-8"))
+    except Exception:
+        voices = []
+
+    target = next((v for v in voices if v["id"] == voice_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="Không tìm thấy giọng này.")
+
+    if target.get("is_builtin"):
+        raise HTTPException(status_code=400, detail="Không thể xóa giọng mẫu mặc định của hệ thống.")
+
+    # Xóa file audio
+    if target.get("audio_path"):
+        audio_p = Path(target["audio_path"])
+        if audio_p.exists():
+            audio_p.unlink(missing_ok=True)
+
+    # Hủy đăng ký trong engine
+    try:
+        cloner = get_cloner()
+        cloner.remove_custom_voice(voice_id)
+    except Exception:
+        pass
+
+    # Cập nhật JSON
+    updated = [v for v in voices if v["id"] != voice_id]
+    custom_json.write_text(json.dumps(updated, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    global _CACHED_VOICES
+    _CACHED_VOICES = None
+
+    return {"status": "ok", "deleted": voice_id}
+
+
+@app.get("/api/history")
+def get_audio_history():
+    """Lấy danh sách các audio đã tạo gần đây."""
+    if not HISTORY_FILE.exists():
+        return {"status": "ok", "history": []}
+    try:
+        data = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
+        valid = [item for item in data if (OUTPUT_DIR / item["filename"]).exists()]
+        return {"status": "ok", "history": valid}
+    except Exception as exc:
+        return {"status": "error", "message": str(exc), "history": []}
+
+
+@app.delete("/api/history/{filename}")
+def delete_audio_history_item(filename: str):
+    """Xóa một audio trong lịch sử và file tương ứng trên đĩa."""
+    target = OUTPUT_DIR / filename
+    if target.exists():
+        target.unlink(missing_ok=True)
+
+    if HISTORY_FILE.exists():
+        try:
+            data = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
+            data = [item for item in data if item.get("filename") != filename]
+            HISTORY_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            pass
+
+    return {"status": "ok", "deleted": filename}
+
+
+@app.delete("/api/history")
+def clear_all_audio_history():
+    """Xóa toàn bộ lịch sử audio."""
+    if OUTPUT_DIR.exists():
+        for f in OUTPUT_DIR.glob("*.wav"):
+            f.unlink(missing_ok=True)
+    if HISTORY_FILE.exists():
+        HISTORY_FILE.write_text("[]", encoding="utf-8")
+    return {"status": "ok", "message": "Đã dọn dẹp toàn bộ lịch sử audio."}
 
 
 @app.post("/synthesize")
@@ -296,8 +516,15 @@ def synthesize_speech(req: SynthesisRequest, background_tasks: BackgroundTasks):
     if pause_style not in valid_pause_styles:
         pause_style = "default"
 
+    try:
+        pitch = float(req.pitch)
+        pitch = max(-4.0, min(4.0, pitch))
+    except (TypeError, ValueError):
+        pitch = 0.0
+
+    normalize_text = bool(req.normalize_text)
+
     voice_info = all_voices[req.voice_id]
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     output_filename = OUTPUT_DIR / f"{uuid.uuid4()}.wav"
 
     try:
@@ -309,8 +536,11 @@ def synthesize_speech(req: SynthesisRequest, background_tasks: BackgroundTasks):
             ref_text=voice_info.get("ref_text", ""),
             output_path=str(output_filename),
             speed=speed,
+            pitch=pitch,
             temperature=temperature,
             pause_style=pause_style,
+            normalize_text=normalize_text,
+            custom_dict=req.custom_dict,
         )
     except Exception as exc:
         raise HTTPException(
@@ -318,7 +548,15 @@ def synthesize_speech(req: SynthesisRequest, background_tasks: BackgroundTasks):
             detail=f"Lỗi trong quá trình tạo âm thanh: {str(exc)}",
         ) from exc
 
-    # Thêm tác vụ nền dọn dẹp file audio cũ
+    # Lưu vào lịch sử và dọn dẹp file cũ
+    record_history(
+        file_path=output_filename,
+        voice_id=req.voice_id,
+        voice_name=voice_info["name"],
+        text=req.text,
+        speed=speed,
+        pitch=pitch,
+    )
     background_tasks.add_task(cleanup_old_outputs)
 
     return FileResponse(result_path, media_type="audio/wav")
@@ -386,8 +624,15 @@ def synthesize_preview_snippet(req: SynthesisRequest, background_tasks: Backgrou
     if pause_style not in valid_pause_styles:
         pause_style = "default"
 
+    try:
+        pitch = float(req.pitch)
+        pitch = max(-4.0, min(4.0, pitch))
+    except (TypeError, ValueError):
+        pitch = 0.0
+
+    normalize_text = bool(req.normalize_text)
+
     voice_info = all_voices[req.voice_id]
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     output_filename = OUTPUT_DIR / f"snippet_{uuid.uuid4().hex[:8]}.wav"
 
     try:
@@ -399,8 +644,11 @@ def synthesize_preview_snippet(req: SynthesisRequest, background_tasks: Backgrou
             ref_text=voice_info.get("ref_text", ""),
             output_path=str(output_filename),
             speed=speed,
+            pitch=pitch,
             temperature=temperature,
             pause_style=pause_style,
+            normalize_text=normalize_text,
+            custom_dict=req.custom_dict,
         )
     except Exception as exc:
         raise HTTPException(
@@ -441,7 +689,7 @@ if __name__ == "__main__":
 
     url = f"http://localhost:{target_port}"
     print(f"\n========================================================")
-    print(f"🎙️ VOICE STUDIO SERVER SẴN SÀNG")
+    print(f"🎙️ VOICE STUDIO PRO SERVER SẴN SÀNG")
     print(f"👉 Địa chỉ: {url}")
     print(f"========================================================\n")
 
@@ -455,4 +703,3 @@ if __name__ == "__main__":
     threading.Thread(target=open_browser, daemon=True).start()
 
     uvicorn.run(app, host="0.0.0.0", port=target_port)
-

@@ -15,7 +15,7 @@ import vieneu_utils.core_utils as core_utils
 # Các cấu hình ngắt nghỉ và ranh giới câu (tương thích trực tiếp với silence_p và max_chars của VieNeu v3 Turbo)
 PAUSE_STYLE_CONFIG = {
     "default": {"silence_p": 0.15, "max_chars": 256},      # Mặc định: Giữ nguyên vẹn 100% nhịp điệu gốc của model
-    "natural": {"silence_p": 0.15, "max_chars": 256},      # Tương đương default
+    "natural": {"silence_p": 0.15, "max_chars": 256},      # Tự nhiên, cân bằng
     "relaxed": {"silence_p": 0.40, "max_chars": 130},      # Thư thả, sâu lắng (sách nói, podcast đêm)
     "expressive": {"silence_p": 0.30, "max_chars": 120},   # Diễn cảm, rõ vế (kể chuyện)
     "presentation": {"silence_p": 0.25, "max_chars": 140}, # Dõng dạc, rành mạch (thuyết trình, bài giảng)
@@ -27,14 +27,132 @@ PAUSE_STYLE_CONFIG = {
 PAUSE_REGEX = re.compile(r"\[(?:ngh[iỉ]|pause):([0-9.]+)s?\]", re.IGNORECASE)
 
 
-def preprocess_natural_text(text: str) -> str:
+def normalize_vietnamese_text(text: str, custom_dict: Optional[Dict[str, str]] = None) -> str:
+    """Tự động chuẩn hóa từ viết tắt, số tiền, ngày tháng, đơn vị đo lường, thương hiệu và từ điển tùy chỉnh."""
+    if not text:
+        return ""
+
+    # 0. Áp dụng từ điển tùy chỉnh nếu người dùng cung cấp
+    if custom_dict and isinstance(custom_dict, dict):
+        for k, v in custom_dict.items():
+            if k and v:
+                pattern = r"\b" + re.escape(str(k).strip()) + r"\b"
+                text = re.sub(pattern, str(v).strip(), text, flags=re.IGNORECASE)
+
+    # 1. Số điện thoại & Hotline Việt Nam (đọc từng chữ số rõ ràng)
+    def _digits_to_vi(match):
+        digits = re.sub(r"\D", "", match.group(0))
+        d_map = {
+            "0": "không", "1": "một", "2": "hai", "3": "ba", "4": "bốn",
+            "5": "năm", "6": "sáu", "7": "bảy", "8": "tám", "9": "chín"
+        }
+        return " ".join(d_map.get(d, d) for d in digits)
+
+    text = re.sub(r"\b(1900|1800)\s*(\d{4})\b", r"tổng đài \1 \2", text)
+    text = re.sub(r"\b(0[35789]\d{8})\b", _digits_to_vi, text)
+    text = re.sub(r"\b(0[35789]\d{1,2}[-.\s]\d{3}[-.\s]\d{3,4})\b", _digits_to_vi, text)
+
+    # 2. Ngày tháng dạng DD/MM/YYYY hoặc DD/MM
+    text = re.sub(r"\b(\d{1,2})/(\d{1,2})/(\d{4})\b", r"ngày \1 tháng \2 năm \3", text)
+    text = re.sub(r"\b(\d{1,2})/(\d{1,2})\b", r"ngày \1 tháng \2", text)
+
+    # 3. Giờ giấc
+    text = re.sub(r"\b(\d{1,2})h(\d{1,2})\b", r"\1 giờ \2 phút", text, flags=re.IGNORECASE)
+    text = re.sub(r"\b(\d{1,2})h\b", r"\1 giờ", text, flags=re.IGNORECASE)
+
+    # 4. Đơn vị tiền tệ & số viết tắt
+    text = re.sub(r"(\d+)\s*(?:k|K)\b", r"\1 nghìn", text)
+    text = re.sub(r"(\d+)\s*(?:tr|TR|trđ|Trđ)\b", r"\1 triệu", text)
+    text = re.sub(r"(\d+)[,\.](\d+)\s*(?:tr|TR|trieu|triệu)\b", r"\1 triệu \2", text)
+    text = re.sub(r"(\d+)\s*tỷ\b", r"\1 tỷ", text, flags=re.IGNORECASE)
+    text = re.sub(r"(\d+)\s*(?:đ|vnđ|vnd|đồng)\b", r"\1 đồng", text, flags=re.IGNORECASE)
+    text = re.sub(r"\$(\d+)", r"\1 đô la", text)
+    text = re.sub(r"(\d+)\s*\$", r"\1 đô la", text)
+    text = re.sub(r"(\d+)\s*%", r"\1 phần trăm", text)
+
+    # 5. Thế kỷ số La Mã
+    text = re.sub(r"\bthế kỷ XXI\b", "thế kỷ hai mươi mốt", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bthế kỷ XX\b", "thế kỷ hai mươi", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bthế kỷ XIX\b", "thế kỷ mười chín", text, flags=re.IGNORECASE)
+
+    # 6. Đơn vị đo lường
+    text = re.sub(r"(\d+)\s*km/h\b", r"\1 ki lô mét trên giờ", text, flags=re.IGNORECASE)
+    text = re.sub(r"(\d+)\s*km\b", r"\1 ki lô mét", text, flags=re.IGNORECASE)
+    text = re.sub(r"(\d+)\s*(?:m2|m²)\b", r"\1 mét vuông", text, flags=re.IGNORECASE)
+    text = re.sub(r"(\d+)\s*(?:m3|m³)\b", r"\1 mét khối", text, flags=re.IGNORECASE)
+    text = re.sub(r"(\d+)\s*kg\b", r"\1 ki lô gam", text, flags=re.IGNORECASE)
+    text = re.sub(r"(\d+)\s*cm\b", r"\1 xen ti mét", text, flags=re.IGNORECASE)
+    text = re.sub(r"(\d+)\s*mm\b", r"\1 mi li mét", text, flags=re.IGNORECASE)
+    text = re.sub(r"(\d+)\s*(?:gb|GB)\b", r"\1 ghi ga bai", text)
+    text = re.sub(r"(\d+)\s*(?:mb|MB)\b", r"\1 mê ga bai", text)
+
+    # 7. Từ viết tắt xưng danh, nghiệp vụ
+    abbreviations = [
+        (r"\bSTK\b", "số tài khoản"),
+        (r"\bSĐT\b", "số điện thoại"),
+        (r"\bđ/c\b", "địa chỉ"),
+        (r"\bKTS\b", "kiến trúc sư"),
+        (r"\bBS\b", "bác sĩ"),
+        (r"\bThS\b", "thạc sĩ"),
+        (r"\bTS\b", "tiến sĩ"),
+        (r"\bPGS\b", "phó giáo sư"),
+        (r"\bGS\b", "giáo sư"),
+        (r"\bsp\b", "sản phẩm"),
+        (r"\bko\b", "không"),
+        (r"\bk\b", "không"),
+        (r"\bđc\b", "được"),
+        (r"\bvs\b", "với"),
+        (r"\bib\b", "in-bóc"),
+    ]
+    for pattern, rep in abbreviations:
+        text = re.sub(pattern, rep, text, flags=re.IGNORECASE)
+
+    # 8. Từ mượn công nghệ / thương hiệu thông dụng
+    brand_map = [
+        (r"\b(?:ChatGPT|chatgpt)\b", "chát giê-pi-ti"),
+        (r"\b(?:GPT|gpt)\b", "giê-pi-ti"),
+        (r"\b(?:AI|ai)\b", "ây-ai"),
+        (r"\b(?:FB|fb|Facebook|facebook)\b", "phây-búc"),
+        (r"\b(?:Zalo|zalo)\b", "da-lo"),
+        (r"\b(?:TikTok|tiktok)\b", "tíc-tốc"),
+        (r"\b(?:YouTube|youtube|yt|YT)\b", "diu-túp"),
+        (r"\b(?:Website|website|web)\b", "oép-sai"),
+        (r"\b(?:Hotline|hotline)\b", "hót-lai"),
+        (r"\b(?:CEO|ceo)\b", "xê-e-ô"),
+        (r"\b(?:VIP|vip)\b", "víp"),
+        (r"\b(?:Email|email|mail)\b", "ê-meo"),
+        (r"\b(?:Wifi|wifi)\b", "oai-phai"),
+        (r"\b(?:Livestream|livestream)\b", "lai-chim"),
+        (r"\b(?:Admin|admin)\b", "át-min"),
+        (r"\b(?:Freeship|freeship)\b", "phi-síp"),
+        (r"\b(?:Ship|ship)\b", "síp"),
+        (r"\b(?:Sale|sale)\b", "seo"),
+        (r"\b(?:Review|review)\b", "ri-viu"),
+        (r"\b(?:Video|video)\b", "vi-de-ô"),
+        (r"\b(?:Link|link)\b", "linh"),
+        (r"\b(?:App|app)\b", "áp"),
+    ]
+    for pattern, replacement in brand_map:
+        text = re.sub(pattern, replacement, text)
+
+    return text
+
+
+def preprocess_natural_text(
+    text: str,
+    auto_normalize: bool = True,
+    custom_dict: Optional[Dict[str, str]] = None,
+) -> str:
     """Chuẩn hóa văn bản, hỗ trợ thẻ lấy hơi, nhịp thở và khoảng ngắt nghỉ tự nhiên."""
     if not text:
         return ""
 
+    if auto_normalize:
+        text = normalize_vietnamese_text(text, custom_dict=custom_dict)
+
     # 1. Chuyển đổi các thẻ lấy hơi / thở tự nhiên sang [thở dài] (emotion token 2 của VieNeu sinh âm thanh hít thở thật)
     text = re.sub(
-        r"\[(thở|lay hoi|lấy hơi|hít thở|hit tho|tho|breathe|hơi)\]",
+        r"\[(thở|lay hoi|lấy hơi|hít thở|hit tho|tho|breathe|hơi|thở phào)\]",
         "[thở dài]",
         text,
         flags=re.IGNORECASE,
@@ -51,10 +169,42 @@ def preprocess_natural_text(text: str) -> str:
     return text.strip()
 
 
+def split_text_into_chunks(text: str, max_words: int = 35) -> List[str]:
+    """Chia văn bản thành các câu hoặc nhóm câu nhỏ gọn (~20-35 từ) để mô hình không bị quá tải trên bài dài."""
+    clean = text.strip()
+    if not clean:
+        return []
+
+    # Chia theo dấu kết thúc câu hoặc xuống dòng
+    raw_sentences = re.split(r"(?<=[.!?…\n])\s+", clean)
+    chunks = []
+    current_chunk = []
+    current_words = 0
+
+    for sent in raw_sentences:
+        s = sent.strip()
+        if not s:
+            continue
+        words_in_s = len(s.split())
+        if current_words > 0 and (current_words + words_in_s > max_words):
+            chunks.append(" ".join(current_chunk))
+            current_chunk = [s]
+            current_words = words_in_s
+        else:
+            current_chunk.append(s)
+            current_words += words_in_s
+
+    if current_chunk:
+        chunks.append(" ".join(current_chunk))
+
+    return chunks if chunks else [clean]
+
+
 class VoiceCloner:
     def __init__(self, threads: int = 4):
         self.device = "cpu (ONNX Runtime)"
         self._tts = Vieneu(mode="v3turbo", backend="onnx", threads=threads)
+        self.sample_rate = getattr(self._tts, "sample_rate", 48000)
         self._registered_references = {}
         self._generation_lock = threading.Lock()
 
@@ -72,6 +222,40 @@ class VoiceCloner:
             }
         return voices
 
+    def register_custom_voice(
+        self,
+        voice_id: str,
+        audio_path: str,
+        description: str = "",
+        gender: str = "",
+    ) -> str:
+        """Đăng ký giọng clone mới từ file âm thanh người dùng tải lên."""
+        audio_file = Path(audio_path).resolve()
+        if not audio_file.is_file():
+            raise FileNotFoundError(f"Không tìm thấy file audio: {audio_file}")
+
+        voice_name = f"clone-{voice_id}"
+        with self._generation_lock:
+            self._tts.add_voice(
+                name=voice_name,
+                ref_audio=audio_file,
+                denoise=True,
+                use_ref_codes=True,
+                description=description,
+                gender=gender,
+                save=False,
+            )
+            self._registered_references[voice_name] = audio_file
+        return voice_name
+
+    def remove_custom_voice(self, voice_id: str) -> None:
+        """Hủy đăng ký giọng clone."""
+        voice_name = f"clone-{voice_id}"
+        with self._generation_lock:
+            if hasattr(self._tts, "remove_voice"):
+                self._tts.remove_voice(voice_name)
+            self._registered_references.pop(voice_name, None)
+
     def _infer_segment(
         self,
         segment_text: str,
@@ -80,9 +264,13 @@ class VoiceCloner:
         dynamic_max_frames: int,
         silence_p: float = 0.15,
         max_chars: int = 256,
+        auto_normalize: bool = True,
+        custom_dict: Optional[Dict[str, str]] = None,
     ) -> np.ndarray:
-        """Sinh audio cho một phân đoạn văn bản theo cấu hình ngắt nghỉ và độ biểu cảm."""
-        clean_text = preprocess_natural_text(segment_text)
+        """Sinh audio cho một phân đoạn văn bản."""
+        clean_text = preprocess_natural_text(
+            segment_text, auto_normalize=auto_normalize, custom_dict=custom_dict
+        )
         if not clean_text:
             return np.array([], dtype=np.float32)
 
@@ -99,6 +287,48 @@ class VoiceCloner:
         )
         return audio if audio is not None else np.array([], dtype=np.float32)
 
+    def _infer_block_smart(
+        self,
+        block_text: str,
+        voice_name: str,
+        temperature: float,
+        silence_p: float = 0.15,
+        max_chars: int = 256,
+        auto_normalize: bool = True,
+        custom_dict: Optional[Dict[str, str]] = None,
+    ) -> np.ndarray:
+        """Xử lý khối chữ: nếu ngắn thì infer trực tiếp, nếu dài thì chia câu thông minh để audio không bao giờ bị cắt ngắn."""
+        words = block_text.strip().split()
+        if len(words) <= 40:
+            frame_cap = max(350, min(2200, len(words) * 50))
+            return self._infer_segment(
+                block_text, voice_name, temperature, frame_cap,
+                silence_p=silence_p, max_chars=max_chars,
+                auto_normalize=auto_normalize, custom_dict=custom_dict,
+            )
+
+        chunks = split_text_into_chunks(block_text, max_words=32)
+        sub_audios: List[np.ndarray] = []
+        silence_samples = int(0.18 * self.sample_rate)
+        gap_zeros = np.zeros(silence_samples, dtype=np.float32)
+
+        for chunk in chunks:
+            c_words = len(chunk.split())
+            frame_cap = max(350, min(1800, c_words * 50))
+            audio_part = self._infer_segment(
+                chunk, voice_name, temperature, frame_cap,
+                silence_p=silence_p, max_chars=max_chars,
+                auto_normalize=auto_normalize, custom_dict=custom_dict,
+            )
+            if len(audio_part) > 0:
+                if sub_audios:
+                    sub_audios.append(gap_zeros)
+                sub_audios.append(audio_part)
+
+        if not sub_audios:
+            return np.array([], dtype=np.float32)
+        return np.concatenate(sub_audios)
+
     def generate(
         self,
         gen_text: str,
@@ -107,8 +337,11 @@ class VoiceCloner:
         ref_text: str = "",
         output_path: str = "output.wav",
         speed: float = 1.0,
-        temperature: Any = 0.8,
+        pitch: float = 0.0,
+        temperature: Any = "default",
         pause_style: str = "default",
+        normalize_text: bool = True,
+        custom_dict: Optional[Dict[str, str]] = None,
     ) -> str:
         if not gen_text or not gen_text.strip():
             raise ValueError("Nội dung văn bản không được để trống.")
@@ -137,18 +370,19 @@ class VoiceCloner:
                         save=False,
                     )
                     self._registered_references[voice_name] = reference_path
-            # 2. Trường hợp sử dụng giọng mẫu có sẵn (Preset Voice)
+            # 2. Trường hợp sử dụng giọng mẫu có sẵn (Preset Voice hoặc đã đăng ký)
             elif voice_id:
                 resolved = self._tts.resolve_voice_name(voice_id) or voice_id
                 if resolved not in self._tts._preset_voices:
-                    raise ValueError(f"Không tìm thấy giọng mẫu '{voice_id}' trong hệ thống.")
+                    # Kiểm tra xem có phải tên clone không
+                    clone_candidate = f"clone-{voice_id}"
+                    if clone_candidate in self._tts._preset_voices:
+                        resolved = clone_candidate
+                    else:
+                        raise ValueError(f"Không tìm thấy giọng đọc '{voice_id}' trong hệ thống.")
                 voice_name = resolved
             else:
                 voice_name = self._tts._default_voice or "Hải Đăng"
-
-            # Tính toán frame trần an toàn
-            word_count = len(gen_text.strip().split())
-            dynamic_max_frames = max(450, min(3500, word_count * 45))
 
             # Độ biểu cảm: nếu là mặc định ("default" hoặc None) thì giữ nguyên 0.8 của model gốc
             if temperature is None or temperature == "default":
@@ -168,9 +402,11 @@ class VoiceCloner:
                     if i % 2 == 0:
                         # Phân đoạn chữ
                         if part.strip():
-                            seg_audio = self._infer_segment(
-                                part, voice_name, temp, dynamic_max_frames,
-                                silence_p=silence_p, max_chars=max_chars
+                            seg_audio = self._infer_block_smart(
+                                part, voice_name, temp,
+                                silence_p=silence_p, max_chars=max_chars,
+                                auto_normalize=normalize_text,
+                                custom_dict=custom_dict,
                             )
                             if len(seg_audio) > 0:
                                 audio_segments.append(seg_audio)
@@ -178,7 +414,7 @@ class VoiceCloner:
                         # Thời gian nghỉ tính bằng giây
                         try:
                             pause_sec = float(part)
-                            pause_samples = int(pause_sec * self._tts.sample_rate)
+                            pause_samples = int(pause_sec * self.sample_rate)
                             if pause_samples > 0:
                                 audio_segments.append(np.zeros(pause_samples, dtype=np.float32))
                         except Exception:
@@ -188,15 +424,17 @@ class VoiceCloner:
                     raise RuntimeError("Mô hình không tạo được audio từ văn bản.")
                 audio = np.concatenate(audio_segments) if len(audio_segments) > 1 else audio_segments[0]
             else:
-                # Xử lý toàn văn với ngắt nghỉ tự nhiên
-                audio = self._infer_segment(
-                    gen_text, voice_name, temp, dynamic_max_frames,
-                    silence_p=silence_p, max_chars=max_chars
+                # Xử lý toàn văn với khối chữ thông minh
+                audio = self._infer_block_smart(
+                    gen_text, voice_name, temp,
+                    silence_p=silence_p, max_chars=max_chars,
+                    auto_normalize=normalize_text,
+                    custom_dict=custom_dict,
                 )
                 if audio is None or len(audio) == 0:
                     raise RuntimeError("Mô hình không tạo được audio từ văn bản đã cung cấp.")
 
-            # Hỗ trợ điều chỉnh tốc độ đọc (speed) giữ nguyên cao độ (pitch)
+            # 1. Điều chỉnh tốc độ đọc (speed)
             try:
                 target_speed = float(speed)
             except (TypeError, ValueError):
@@ -213,9 +451,31 @@ class VoiceCloner:
                 except Exception as stretch_err:
                     print(f"⚠️ Không thể co giãn tốc độ: {stretch_err}")
 
+            # 2. Điều chỉnh cao độ (pitch / n_steps: từ -3.0 đến +3.0 bán cung)
+            try:
+                pitch_steps = float(pitch)
+            except (TypeError, ValueError):
+                pitch_steps = 0.0
+
+            if abs(pitch_steps) >= 0.4:
+                clamped_pitch = max(-4.0, min(4.0, pitch_steps))
+                try:
+                    import librosa
+                    audio = librosa.effects.pitch_shift(
+                        audio.astype(np.float32),
+                        sr=self.sample_rate,
+                        n_steps=clamped_pitch,
+                    )
+                except Exception as pitch_err:
+                    print(f"⚠️ Không thể dịch cao độ giọng: {pitch_err}")
+
+            # 3. Chuẩn hóa âm lượng tự động (Volume Peak Normalization -0.5 dBFS)
+            if len(audio) > 0:
+                max_amp = float(np.max(np.abs(audio)))
+                if max_amp > 1e-4:
+                    target_peak = 0.94
+                    audio = audio * (target_peak / max_amp)
+
             self._tts.save(audio, output_file)
 
         return str(output_file)
-
-
-

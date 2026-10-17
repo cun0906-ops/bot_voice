@@ -1,0 +1,14 @@
+[
+  {
+    "id": "van_thanh_tri",
+    "name": "Vân Thanh Trì",
+    "description": "Nữ · Bắc · Giọng doanh nghiệp mạ kẽm An Đại Phát",
+    "gender": "female",
+    "region": "Bắc",
+    "category": "Doanh nghiệp (Clone)",
+    "is_clone": true,
+    "audio_path": "voices/van_thanh_tri_short.wav",
+    "ref_text": "Dạ, em là Vân ở bên công ty An Đại Phát ở Thanh Trì, Hà Nội chuyên mạ kẽm điện phân và nhúng nóng ạ.",
+    "is_builtin": true
+  }
+]
