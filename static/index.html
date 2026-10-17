@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101b2d">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎙️</text></svg>">
   <title>Voice Studio | Tạo giọng nói</title>
   <style>
     :root {
@@ -54,9 +55,18 @@
     textarea:focus, select:focus { border-color: #4bd7b5; box-shadow: 0 0 0 3px rgba(75, 215, 181, .1); }
     .field { margin-bottom: 20px; }
     .text-meta { display: flex; justify-content: space-between; margin-top: 8px; color: #78879d; font-size: 11px; }
-    .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 22px; }
+    .emotion-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .emotion-title { font-size: 11px; color: #8fa1ba; }
+    .emotion-btn {
+      display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 0 10px;
+      border-radius: 7px; font-size: 11px; font-weight: 650; color: #6ee7b7;
+      background: rgba(52, 211, 153, 0.12); border: 1px solid rgba(52, 211, 153, 0.28);
+      cursor: pointer; transition: background .15s, transform .15s;
+    }
+    .emotion-btn:hover { background: rgba(52, 211, 153, 0.24); transform: translateY(-1px); }
+    .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-top: 22px; }
     .speed-head { display: flex; justify-content: space-between; align-items: center; }
-    .speed-value { color: #62e0c0; font-variant-numeric: tabular-nums; font-size: 12px; }
+    .speed-value { color: #62e0c0; font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 700; }
     input[type="range"] { width: 100%; margin: 12px 0 0; accent-color: #52d9b8; }
     .range-labels { display: flex; justify-content: space-between; margin-top: 5px; color: #78879d; font-size: 10px; }
     .speed-note { min-height: 44px; display: flex; align-items: center; color: #92a3ba; font-size: 12px; line-height: 1.5; }
@@ -72,6 +82,33 @@
     .primary:hover:not(:disabled) { background: #6be9ca; }
     .secondary { color: #c8d4e5; background: #202d42; }
     .secondary:hover { background: #2a3a54; }
+    .preview-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      min-height: 26px;
+      height: 26px;
+      padding: 0 10px;
+      border: 1px solid rgba(82, 224, 189, 0.45);
+      border-radius: 7px;
+      background: rgba(82, 224, 189, 0.08);
+      color: #52e0bd;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.16s ease;
+    }
+    .preview-btn:hover:not(:disabled) {
+      background: rgba(82, 224, 189, 0.22);
+      border-color: #52e0bd;
+      transform: translateY(-1px);
+    }
+    .preview-btn.playing {
+      background: #52e0bd;
+      color: #0b1220;
+      border-color: #52e0bd;
+      box-shadow: 0 0 10px rgba(82, 224, 189, 0.5);
+    }
     .notice { display: none; margin-top: 16px; padding: 11px 13px; border-radius: 9px; font-size: 12px; line-height: 1.5; }
     .notice.show { display: block; }
     .notice.error { color: #ffc5ca; background: rgba(174, 48, 67, .18); border: 1px solid rgba(239, 106, 119, .3); }
@@ -83,6 +120,7 @@
     .download { min-height: 36px; margin-top: 10px; padding: 0 13px; color: #a9f2df; background: #16362f; font-size: 11px; }
     .tip { padding: 13px; border: 1px solid #263750; border-radius: 11px; color: #a8b7ca; background: #101c2f; font-size: 12px; line-height: 1.7; }
     .tip strong { color: #e6edf7; }
+    .tip code { background: #1b2b44; color: #6ee7b7; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
     .facts { display: grid; gap: 13px; margin-top: 20px; }
     .fact { display: flex; justify-content: space-between; gap: 14px; padding-bottom: 12px; border-bottom: 1px solid #243149; color: #8291a8; font-size: 11px; }
     .fact span:last-child { color: #d2dce9; text-align: right; }
@@ -97,7 +135,6 @@
       .status { font-size: 0; }
     }
     @media (max-width: 440px) {
-      .controls { grid-template-columns: 1fr; gap: 4px; }
       .actions { flex-direction: column; }
       .actions button { width: 100%; }
       textarea { min-height: 160px; }
@@ -117,7 +154,7 @@
     <section class="intro">
       <div class="eyebrow">AI voice workspace</div>
       <h1>Tạo giọng nói của bạn</h1>
-      <p>Nhập nội dung, chọn giọng. Audio WAV sẽ xuất hiện ngay bên dưới sau khi xử lý.</p>
+      <p>Nhập nội dung tiếng Việt, chọn giọng đọc, tùy chỉnh nhịp thở, khoảng ngắt nghỉ và cảm xúc để âm thanh tự nhiên nhất.</p>
     </section>
 
     <div class="layout">
@@ -126,18 +163,68 @@
         <form id="synthesisForm">
           <div class="field">
             <label for="text">Văn bản</label>
-            <textarea id="text" name="text" placeholder="Nhập nội dung tiếng Việt bạn muốn đọc..." required></textarea>
-            <div class="text-meta"><span>Viết câu tự nhiên, có dấu câu để giọng đọc mượt hơn</span><span id="charCount">0 ký tự</span></div>
+            <textarea id="text" name="text" placeholder="Nhập nội dung tiếng Việt... (Dùng dấu phẩy, chấm, ba chấm để AI tự ngắt nhịp thở tự nhiên)" required></textarea>
+            <div class="text-meta">
+              <span>Mẹo: Dấu câu (, . ? ...) và xuống dòng quyết định nhịp thở tự nhiên của giọng đọc</span>
+              <span id="charCount">0 ký tự</span>
+            </div>
+            <div class="emotion-bar">
+              <span class="emotion-title">Sắc thái & Ngắt nghỉ:</span>
+              <button type="button" class="emotion-btn" onclick="insertEmotionTag('[lấy hơi]')">🌬️ [lấy hơi]</button>
+              <button type="button" class="emotion-btn" onclick="insertEmotionTag('[nghỉ:0.5s]')">⏸️ [nghỉ 0.5s]</button>
+              <button type="button" class="emotion-btn" onclick="insertEmotionTag('[nghỉ:1s]')">⏹️ [nghỉ 1s]</button>
+              <button type="button" class="emotion-btn" onclick="insertEmotionTag('[cười]')">😊 [cười]</button>
+              <button type="button" class="emotion-btn" onclick="insertEmotionTag('[thở dài]')">💨 [thở dài]</button>
+              <button type="button" class="emotion-btn" onclick="insertEmotionTag('[hắng giọng]')">🗣️ [hắng giọng]</button>
+            </div>
           </div>
 
           <div class="controls">
             <div class="field">
-              <label for="voice">Giọng đọc</label>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <label for="voice" style="margin:0;">Giọng đọc</label>
+                <button type="button" id="previewVoiceBtn" class="preview-btn" title="Bấm để nghe thử mẫu giọng này">
+                  <span id="previewIcon">▶</span><span id="previewText">Nghe thử</span>
+                </button>
+              </div>
               <select id="voice" name="voice_id" required><option value="">Đang tải danh sách giọng...</option></select>
+              <div id="voiceDescription" style="margin-top:6px; font-size:11px; color:#52e0bd; min-height:16px;"></div>
+              <audio id="previewAudioPlayer" style="display:none;"></audio>
             </div>
+
             <div class="field">
-              <label>Tốc độ đọc</label>
-              <div class="speed-note">Tốc độ tự nhiên · ưu tiên phát âm rõ</div>
+              <div class="speed-head">
+                <label for="speedRange">Tốc độ đọc</label>
+                <span id="speedValue" class="speed-value">1.05x (Khuyên dùng)</span>
+              </div>
+              <input id="speedRange" name="speed" type="range" min="0.8" max="1.35" step="0.05" value="1.05">
+              <div class="range-labels">
+                <span>0.8x</span>
+                <span>1.0x Chuẩn</span>
+                <span>1.05x</span>
+                <span>1.35x</span>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="emotionSelect">Độ biểu cảm / Hồn giọng</label>
+              <select id="emotionSelect" name="temperature">
+                <option value="0.8" selected>✨ Tự nhiên & Truyền cảm (0.8 - Chuẩn)</option>
+                <option value="0.95">🔥 Giàu cảm xúc, sinh động (0.95)</option>
+                <option value="0.65">🎙️ Điềm đạm, rõ chữ (0.65 - Tin tức)</option>
+              </select>
+              <div style="margin-top:6px; font-size:11px; color:#8fa1ba;">Ngữ điệu luyến láy & trầm bổng</div>
+            </div>
+
+            <div class="field">
+              <label for="pauseSelect">Nhịp ngắt nghỉ tự nhiên</label>
+              <select id="pauseSelect" name="pause_style">
+                <option value="natural" selected>🌿 Tự nhiên (0.5s - Đàm thoại chuẩn)</option>
+                <option value="relaxed">📖 Thư thả, sâu lắng (0.75s - Sách nói, podcast)</option>
+                <option value="expressive">🎭 Diễn cảm, ngắt rõ vế (0.6s - Kể chuyện)</option>
+                <option value="compact">⚡ Nhanh, liền mạch (0.3s - Tin vắn, video ngắn)</option>
+              </select>
+              <div style="margin-top:6px; font-size:11px; color:#8fa1ba;">Khoảng dừng lấy hơi giữa các câu</div>
             </div>
           </div>
 
@@ -156,12 +243,18 @@
       </section>
 
       <aside class="card side-card">
-        <h2 class="section-title">Thông tin</h2>
-        <div class="tip"><strong>Mẹo:</strong> Dùng dấu chấm, dấu phẩy và chia đoạn hợp lý để lời đọc tự nhiên hơn. Lần tạo đầu tiên cần tải model tiếng Việt; giữ audio mẫu ngắn, rõ và một người nói để clone ổn định.</div>
+        <h2 class="section-title">Bí quyết giọng đọc chân thật</h2>
+        <div class="tip">
+          <strong>1. Dấu câu quyết định nhịp thở:</strong> Dấu phẩy (,), dấu chấm (.), dấu ba chấm (...) và xuống dòng giúp AI tự động ngắt nghỉ lấy hơi như người thật.<br><br>
+          <strong>2. Chèn nhịp thở & ngắt nghỉ chủ động:</strong> Nhấn nút <code>[lấy hơi]</code> hoặc <code>[nghỉ:0.5s]</code>, <code>[nghỉ:1s]</code> vào bất kỳ vị trí nào để câu nói có chiều sâu và chân thật.<br><br>
+          <strong>3. Tốc độ & Giọng hợp cảnh:</strong> Tốc độ 1.05x kết hợp phong cách nhịp nghỉ <em>Tự nhiên</em> hoặc <em>Thư thả</em> cho cảm giác nghe cuốn hút nhất.
+        </div>
         <div class="facts">
           <div class="fact"><span>Trạng thái model</span><span id="modelStatus">Đang kiểm tra</span></div>
-          <div class="fact"><span>Thiết bị</span><span id="deviceStatus">—</span></div>
-          <div class="fact"><span>Định dạng đầu ra</span><span>WAV</span></div>
+          <div class="fact"><span>Thiết bị xử lý</span><span id="deviceStatus">CPU</span></div>
+          <div class="fact"><span>Tổng số giọng</span><span id="voiceCount">—</span></div>
+          <div class="fact"><span>Ngắt nghỉ tự nhiên</span><span>Đã bật (Multi-gap)</span></div>
+          <div class="fact"><span>Định dạng đầu ra</span><span>WAV 48kHz (High Res)</span></div>
         </div>
         <p style="margin:20px 0 0"><a class="api-link" href="/docs">Mở tài liệu API →</a></p>
       </aside>
@@ -178,7 +271,64 @@
     const audioPanel = document.getElementById("audioPanel");
     const audioPlayer = document.getElementById("audioPlayer");
     const downloadLink = document.getElementById("downloadLink");
+    const previewBtn = document.getElementById("previewVoiceBtn");
+    const previewIcon = document.getElementById("previewIcon");
+    const previewText = document.getElementById("previewText");
+    const previewAudioPlayer = document.getElementById("previewAudioPlayer");
     let currentAudioUrl = null;
+    let voiceMap = {};
+    let isPreviewPlaying = false;
+
+    function stopPreview() {
+      if (previewAudioPlayer) {
+        previewAudioPlayer.pause();
+        previewAudioPlayer.currentTime = 0;
+      }
+      isPreviewPlaying = false;
+      if (previewBtn) previewBtn.classList.remove("playing");
+      if (previewIcon) previewIcon.textContent = "▶";
+      if (previewText) previewText.textContent = "Nghe thử";
+    }
+
+    if (previewAudioPlayer) {
+      previewAudioPlayer.addEventListener("ended", stopPreview);
+      previewAudioPlayer.addEventListener("error", () => {
+        stopPreview();
+      });
+    }
+
+    if (previewBtn) {
+      previewBtn.addEventListener("click", async () => {
+        const selectedVoice = voiceSelect.value;
+        if (!selectedVoice) {
+          showNotice("Vui lòng đợi danh sách giọng tải xong.", "error");
+          return;
+        }
+
+        if (isPreviewPlaying) {
+          stopPreview();
+          return;
+        }
+
+        previewBtn.disabled = true;
+        previewIcon.textContent = "⏳";
+        previewText.textContent = "Đang tải...";
+
+        try {
+          previewAudioPlayer.src = `/voices/${encodeURIComponent(selectedVoice)}/preview?t=${Date.now()}`;
+          await previewAudioPlayer.play();
+          isPreviewPlaying = true;
+          previewBtn.classList.add("playing");
+          previewIcon.textContent = "⏹";
+          previewText.textContent = "Dừng nghe";
+        } catch (err) {
+          stopPreview();
+          showNotice("Không thể phát mẫu nghe thử: " + (err.message || "Lỗi âm thanh"), "error");
+        } finally {
+          previewBtn.disabled = false;
+        }
+      });
+    }
 
     function showNotice(message, kind) {
       notice.textContent = message;
@@ -189,22 +339,90 @@
       const healthResponse = await fetch("/health");
       if (!healthResponse.ok) throw new Error("Không kết nối được với máy chủ API.");
       const health = await healthResponse.json();
-      document.getElementById("statusText").textContent = "Máy chủ đang hoạt động";
-      document.getElementById("deviceStatus").textContent = health.device.toUpperCase();
-      document.getElementById("modelStatus").textContent = health.model_loaded ? "Đã nạp" : "Sẽ nạp khi tạo";
+      const statusText = document.getElementById("statusText");
+      if (statusText) statusText.textContent = "Máy chủ đang hoạt động";
+      const statusDot = document.getElementById("statusDot");
+      if (statusDot) statusDot.classList.remove("offline");
+      const deviceStatus = document.getElementById("deviceStatus");
+      if (deviceStatus) deviceStatus.textContent = (health.device || "CPU").toUpperCase();
+      const modelStatus = document.getElementById("modelStatus");
+      if (modelStatus) modelStatus.textContent = health.model_loaded ? "Đã nạp" : "Sẵn sàng";
 
       const voicesResponse = await fetch("/voices");
       if (!voicesResponse.ok) throw new Error("Không tải được danh sách giọng đọc.");
       const data = await voicesResponse.json();
       voiceSelect.replaceChildren();
-      for (const voiceId of data.voices) {
-        const option = document.createElement("option");
-        option.value = voiceId;
-        option.textContent = voiceId.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase());
-        voiceSelect.append(option);
+      voiceMap = {};
+
+      const categories = {};
+      for (const item of data.voices) {
+        const v = typeof item === "string" ? { id: item, name: item, description: "", category: "Khác" } : item;
+        voiceMap[v.id] = v;
+        const cat = v.category || "Khác";
+        if (!categories[cat]) categories[cat] = [];
+        categories[cat].push(v);
       }
+
+      for (const [catName, list] of Object.entries(categories)) {
+        const group = document.createElement("optgroup");
+        group.label = catName;
+        for (const v of list) {
+          const option = document.createElement("option");
+          option.value = v.id;
+          option.textContent = `${v.name} · ${v.description || ''}`;
+          group.appendChild(option);
+        }
+        voiceSelect.appendChild(group);
+      }
+
+      document.getElementById("voiceCount").textContent = `${data.voices.length} giọng`;
+
+      function updateVoiceBadge() {
+        const v = voiceMap[voiceSelect.value];
+        const descEl = document.getElementById("voiceDescription");
+        if (descEl && v) {
+          descEl.textContent = `${v.is_clone ? '⭐ Giọng Clone: ' : '🎙️ Giọng mẫu: '}${v.name} (${v.description || v.category})`;
+        }
+      }
+
+      voiceSelect.addEventListener("change", () => {
+        stopPreview();
+        updateVoiceBadge();
+      });
+      updateVoiceBadge();
+
       if (!data.voices.length) throw new Error("Hiện chưa có giọng đọc nào được cấu hình.");
     }
+
+    const speedRange = document.getElementById("speedRange");
+    const speedValue = document.getElementById("speedValue");
+    const emotionSelect = document.getElementById("emotionSelect");
+
+    speedRange.addEventListener("input", () => {
+      const val = parseFloat(speedRange.value);
+      let desc = "";
+      if (val === 1.0) desc = " (Chuẩn)";
+      else if (val === 1.05) desc = " (Khuyên dùng)";
+      else if (val > 1.05) desc = " (Nhanh)";
+      else desc = " (Chậm)";
+      speedValue.textContent = `${val.toFixed(2)}x${desc}`;
+    });
+
+    window.insertEmotionTag = function(tag) {
+      const start = textInput.selectionStart;
+      const end = textInput.selectionEnd;
+      const val = textInput.value;
+      const before = val.substring(0, start);
+      const after = val.substring(end);
+      const prefix = (before.length === 0 || before.endsWith(" ")) ? "" : " ";
+      const suffix = after.startsWith(" ") ? "" : " ";
+      const insertText = prefix + tag + suffix;
+      textInput.value = before + insertText + after;
+      const newPos = start + insertText.length;
+      textInput.focus();
+      textInput.setSelectionRange(newPos, newPos);
+      textInput.dispatchEvent(new Event("input"));
+    };
 
     textInput.addEventListener("input", () => {
       document.getElementById("charCount").textContent = `${textInput.value.length} ký tự`;
@@ -234,7 +452,9 @@
           body: JSON.stringify({
             text: textInput.value.trim(),
             voice_id: voiceSelect.value,
-            speed: 1.0
+            speed: parseFloat(speedRange.value) || 1.05,
+            temperature: parseFloat(emotionSelect.value) || 0.8,
+            pause_style: document.getElementById("pauseSelect").value || "natural"
           })
         });
         if (!response.ok) {
@@ -266,10 +486,10 @@
     });
 
     loadInfo().catch((error) => {
-      document.getElementById("statusText").textContent = "Không kết nối được";
+      document.getElementById("statusText").innerHTML = 'Không kết nối được (<a href="javascript:void(0)" onclick="loadInfo()" style="color:#52e0bd;text-decoration:underline;">Bấm thử lại</a>)';
       document.getElementById("statusDot").classList.add("offline");
       document.getElementById("modelStatus").textContent = "Không khả dụng";
-      showNotice(error.message, "error");
+      showNotice(error.message || "Máy chủ chưa khởi động hoặc chưa mở cổng kết nối.", "error");
     });
   </script>
 </body>
