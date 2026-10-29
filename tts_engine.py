@@ -86,7 +86,96 @@ def normalize_vietnamese_text(text: str, custom_dict: Optional[Dict[str, str]] =
     text = re.sub(r"(\d+)\s*(?:gb|GB)\b", r"\1 ghi ga bai", text)
     text = re.sub(r"(\d+)\s*(?:mb|MB)\b", r"\1 mê ga bai", text)
 
-    # 7. Từ viết tắt xưng danh, nghiệp vụ
+    # 7. Từ viết tắt tiếng Anh đặc thù & đọc từng chữ cái tiếng Anh cho từ IN HOA (KOC, KOL, KPI, ROI...)
+    EN_LETTER_MAP = {
+        'A': 'ây', 'B': 'bi', 'C': 'xi', 'D': 'đi', 'E': 'i',
+        'F': 'ép', 'G': 'gi', 'H': 'hét', 'I': 'ai', 'J': 'dây',
+        'K': 'cây', 'L': 'eo', 'M': 'em', 'N': 'en', 'O': 'âu',
+        'P': 'pi', 'Q': 'kiu', 'R': 'a', 'S': 'ét', 'T': 'ti',
+        'U': 'du', 'V': 'vi', 'W': 'đáp-liu', 'X': 'ích', 'Y': 'oai', 'Z': 'dét'
+    }
+
+    # Danh mục viết tắt Digital Marketing / KOC / KOL / Tech phổ biến
+    curated_acronyms = [
+        (r"\bKOCs\b", "cây-âu-xi"),
+        (r"\bKOC\b", "cây-âu-xi"),
+        (r"\bKOLs\b", "cây-âu-eo"),
+        (r"\bKOL\b", "cây-âu-eo"),
+        (r"\bKPIs\b", "cây-pi-ai"),
+        (r"\bKPI\b", "cây-pi-ai"),
+        (r"\bROI\b", "a-âu-ai"),
+        (r"\bROAS\b", "a-âu-ây-ét"),
+        (r"\bUGC\b", "du-gi-xi"),
+        (r"\bMCN\b", "em-xi-en"),
+        (r"\bCPM\b", "xi-pi-em"),
+        (r"\bCPC\b", "xi-pi-xi"),
+        (r"\bCTR\b", "xi-ti-a"),
+        (r"\bCTA\b", "xi-ti-ây"),
+        (r"\bGMV\b", "gi-em-vi"),
+        (r"\bSEO\b", "ét-i-âu"),
+        (r"\bB2B\b", "bi-tu-bi"),
+        (r"\bB2C\b", "bi-tu-xi"),
+        (r"\bD2C\b", "đi-tu-xi"),
+        (r"\bPR\b", "pi-a"),
+        (r"\bHR\b", "hét-a"),
+        (r"\bQA\b", "kiu-ây"),
+        (r"\bQC\b", "kiu-xi"),
+        (r"\bCEO\b", "xi-i-âu"),
+        (r"\bCFO\b", "xi-ép-âu"),
+        (r"\bCMO\b", "xi-em-âu"),
+        (r"\bCTO\b", "xi-ti-âu"),
+        (r"\bCOO\b", "xi-âu-âu"),
+        (r"\bVIP\b", "vi-ai-pi"),
+        (r"\bIT\b", "ai-ti"),
+        (r"\bUI\b", "du-ai"),
+        (r"\bUX\b", "du-ích"),
+        (r"\bAI\b", "ây-ai"),
+        (r"\bMC\b", "em-xi"),
+        (r"\bDJ\b", "đi-dây"),
+        (r"\bSKU\b", "ét-cây-du"),
+        (r"\bAPI\b", "ây-pi-ai"),
+        (r"\bSDK\b", "ét-đi-cây"),
+        (r"\bSMS\b", "ét-em-ét"),
+        (r"\bOTP\b", "âu-ti-pi"),
+        (r"\bVAT\b", "vi-ây-ti"),
+        (r"\bFAQ\b", "ép-ây-kiu"),
+        (r"\bDIY\b", "đi-ai-oai"),
+        (r"\bDNA\b", "đi-en-ây"),
+        (r"\bGPS\b", "gi-pi-ét"),
+        (r"\bATM\b", "ây-ti-em"),
+        (r"\bPOS\b", "pi-âu-ét"),
+        (r"\bID\b", "ai-đi"),
+        (r"\bCV\b", "xi-vi"),
+        (r"\bPC\b", "pi-xi"),
+        (r"\bUSB\b", "du-ét-bi"),
+        (r"\bOOH\b", "âu-âu-hét"),
+        (r"\bOTT\b", "âu-ti-ti"),
+        (r"\bPBN\b", "pi-bi-en"),
+    ]
+    for pattern, rep in curated_acronyms:
+        text = re.sub(pattern, rep, text)
+
+    # Tự động đọc từng chữ cái tiếng Anh cho CÁC TỪ VIẾT HOA CÒN LẠI (2-5 ký tự IN HOA)
+    # Trừ các từ viết tắt tiếng Việt cơ quan / nhà nước
+    VIETNAMESE_UPPERCASE_EXCLUDE = {
+        "STK", "SĐT", "TP", "UBND", "HĐND", "BHYT", "BHXH", "CCCD", "CMND", "CSKH",
+        "KTS", "BS", "THS", "TS", "PGS", "GS", "PCCC", "TNMT", "GTVT", "THPT", "THCS",
+        "ĐH", "CĐ", "VND", "VNĐ", "CLB", "TNHH", "CP", "DN", "BGD", "BYT", "BCA", "BQP",
+        "BCT", "TCVN", "BTTTT", "VTV", "HTV", "VOV", "TTXVN", "NXB", "HĐQT"
+    }
+
+    def _spell_english_acronym(m):
+        word = m.group(1)
+        if word in VIETNAMESE_UPPERCASE_EXCLUDE:
+            return word
+        letters = [EN_LETTER_MAP.get(c, c) for c in word if c in EN_LETTER_MAP]
+        if len(letters) == len(word):
+            return "-".join(letters)
+        return word
+
+    text = re.sub(r"\b([A-Z]{2,5})\b", _spell_english_acronym, text)
+
+    # 8. Từ viết tắt xưng danh, nghiệp vụ tiếng Việt
     abbreviations = [
         (r"\bSTK\b", "số tài khoản"),
         (r"\bSĐT\b", "số điện thoại"),
@@ -107,19 +196,16 @@ def normalize_vietnamese_text(text: str, custom_dict: Optional[Dict[str, str]] =
     for pattern, rep in abbreviations:
         text = re.sub(pattern, rep, text, flags=re.IGNORECASE)
 
-    # 8. Từ mượn công nghệ / thương hiệu thông dụng
+    # 9. Từ mượn công nghệ / thương hiệu thông dụng
     brand_map = [
         (r"\b(?:ChatGPT|chatgpt)\b", "chát giê-pi-ti"),
         (r"\b(?:GPT|gpt)\b", "giê-pi-ti"),
-        (r"\b(?:AI|ai)\b", "ây-ai"),
         (r"\b(?:FB|fb|Facebook|facebook)\b", "phây-búc"),
-        (r"\b(?:Zalo|zalo)\b", "da-lo"),
+        (r"\b(?:Zalo|zalo)\b", "da-lô"),
         (r"\b(?:TikTok|tiktok)\b", "tíc-tốc"),
         (r"\b(?:YouTube|youtube|yt|YT)\b", "diu-túp"),
         (r"\b(?:Website|website|web)\b", "oép-sai"),
         (r"\b(?:Hotline|hotline)\b", "hót-lai"),
-        (r"\b(?:CEO|ceo)\b", "xê-e-ô"),
-        (r"\b(?:VIP|vip)\b", "víp"),
         (r"\b(?:Email|email|mail)\b", "ê-meo"),
         (r"\b(?:Wifi|wifi)\b", "oai-phai"),
         (r"\b(?:Livestream|livestream)\b", "lai-chim"),
@@ -143,14 +229,21 @@ def preprocess_natural_text(
     auto_normalize: bool = True,
     custom_dict: Optional[Dict[str, str]] = None,
 ) -> str:
-    """Chuẩn hóa văn bản, hỗ trợ thẻ lấy hơi, nhịp thở và khoảng ngắt nghỉ tự nhiên."""
+    """Chuẩn hóa văn bản, hỗ trợ thẻ lấy hơi, nhịp thở, thẻ nhấn mạnh và khoảng ngắt nghỉ tự nhiên."""
     if not text:
         return ""
 
     if auto_normalize:
         text = normalize_vietnamese_text(text, custom_dict=custom_dict)
 
-    # 1. Chuyển đổi các thẻ lấy hơi / thở tự nhiên sang [thở dài] (emotion token 2 của VieNeu sinh âm thanh hít thở thật)
+    # 1. Chuyển đổi các thẻ nhấn nhá:
+    # [nhấn]từ ngữ[/nhấn] hoặc [nhấn: từ ngữ] hoặc **từ ngữ**
+    # Kỹ thuật tạo trọng âm: Thêm khoảng ngắt nhẹ " ... " trước từ và " — " sau từ để AI nhấn mạnh trọng âm
+    text = re.sub(r"\[(?:nhấn|stress|em(?:phasize)?):?\s*([^\]]+)\]", r" ... \1 — ", text, flags=re.IGNORECASE)
+    text = re.sub(r"\[(?:nhấn|stress|em(?:phasize)?)\](.*?)\[/(?:nhấn|stress|em(?:phasize)?)\]", r" ... \1 — ", text, flags=re.IGNORECASE)
+    text = re.sub(r"\*\*([^*]+)\*\*", r" ... \1 — ", text)
+
+    # 2. Chuyển đổi các thẻ lấy hơi / thở tự nhiên sang [thở dài] (emotion token 2 của VieNeu sinh âm thanh hít thở thật)
     text = re.sub(
         r"\[(thở|lay hoi|lấy hơi|hít thở|hit tho|tho|breathe|hơi|thở phào)\]",
         "[thở dài]",
@@ -158,15 +251,109 @@ def preprocess_natural_text(
         flags=re.IGNORECASE,
     )
 
-    # 2. Chuyển đổi các thẻ nghỉ không kèm số giây sang dấu ngắt nhịp tự nhiên
+    # 3. Chuyển đổi thẻ [cười] (emotion token 1 của VieNeu)
+    text = re.sub(
+        r"\[(cười mỉm|cười vui|cuoi|chuckle|laugh)\]",
+        "[cười]",
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    # 4. Chuyển đổi thẻ [hắng giọng] (emotion token 3 của VieNeu)
+    text = re.sub(
+        r"\[(hắng|hang giong|clear throat|cough)\]",
+        "[hắng giọng]",
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    # 5. Chuyển đổi các thẻ nghỉ không kèm số giây sang dấu ngắt nhịp tự nhiên
     text = re.sub(r"\[(nghỉ ngắn|nghi ngan|short pause)\]", " ... ", text, flags=re.IGNORECASE)
     text = re.sub(r"\[(nghỉ dài|nghi dai|long pause)\]", " .\n\n", text, flags=re.IGNORECASE)
 
-    # 3. Chuẩn hóa gạch ngang và dấu ba chấm để AI tạo khoảng ngập ngừng tự nhiên
+    # 6. Chuẩn hóa gạch ngang và dấu ba chấm để AI tạo khoảng ngập ngừng tự nhiên
     text = re.sub(r"\s*--\s*", " — ", text)
     text = re.sub(r"\.{4,}", "...", text)
 
     return text.strip()
+
+
+def apply_auto_phrasing(text: str, style: str = "natural") -> str:
+    """Tự động phân tích và thêm dấu câu, điểm lấy hơi, khoảng ngắt nghỉ luyến láy và từ nhấn nhá
+    để giọng AI đọc có ngữ điệu truyền cảm, tự nhiên như người thật."""
+    if not text or not text.strip():
+        return ""
+
+    t = text.strip()
+
+    # 1. Thêm [lấy hơi] ở đầu nếu là câu chào hoặc mở đầu bài
+    if not re.match(r"^\[(lấy hơi|thở|thở dài|cười|hắng giọng)\]", t, flags=re.IGNORECASE):
+        greeting_pattern = r"^(dạ\s+)?(xin\s+chào|chào\s+quý\s+vị|chào\s+các\s+bạn|kính\s+chào|chào\s+mừng|chào\s+mọi\s+người|hello|hi)\b"
+        if re.match(greeting_pattern, t, flags=re.IGNORECASE):
+            t = "[lấy hơi] " + t
+        elif style in ["story", "podcast", "expressive"]:
+            t = "[lấy hơi] " + t
+
+    # 2. Xử lý các liên từ dẫn dắt & trạng từ tạo điểm nhấn (Discourse Markers & Connectors)
+    # Thêm dấu luyến láy (...) hoặc ngắt vế ( — ) để AI hạ nhịp rồi nhấn vế sau
+    connectors_pause = [
+        (r"\b(tuy nhiên|nhưng mà|thế nhưng|đáng chú ý là|sự thật là|trên thực tế)\b(?!\s*[\.,!?:…—])", r"\1..."),
+        (r"\b(đặc biệt là|chính vì thế|hơn thế nữa|không chỉ vậy|không những thế|quan trọng nhất là|điều tuyệt vời là)\b(?!\s*[\.,!?:…—])", r"\1 —"),
+        (r"\b(chắc chắn rằng|hãy nhớ rằng|bạn có biết rằng|hãy tưởng tượng)\b(?!\s*[\.,!?:…—])", r"\1..."),
+        (r"\b(tóm lại|nói cách khác|nhìn chung|kết quả là)\b(?!\s*[\.,!?:…—])", r"\1,"),
+    ]
+    for pattern, rep in connectors_pause:
+        t = re.sub(pattern, rep, t, flags=re.IGNORECASE)
+
+    # 3. Nhấn nhá theo phong cách cụ thể
+    if style in ["sales", "rapid"]:
+        # Phong cách bán hàng / TikTok / Review: Hào hứng, dồn dập, nhấn mạnh ưu đãi & hành động
+        cta_words = [
+            (r"\b(KOCs?|KOLs?)\b", r" **\1**"),
+            (r"\b(ngay bây giờ|ngay hôm nay|chỉ hôm nay|đừng bỏ lỡ|nhanh tay|duy nhất hôm nay)\b(?!\s*[\.,!?:…—])", r" — **\1**!"),
+            (r"\b(hoàn toàn miễn phí|freeship toàn quốc|bảo hành trọn đời|giảm ngay|ưu đãi cực khủng)\b(?!\s*[\.,!?:…—])", r" **\1**,"),
+            (r"\b(gấp\s*\d+\s*lần|\d+%\s*giảm|giảm\s*\d+%)\b(?!\s*[\.,!?:…—])", r" **\1**!"),
+        ]
+        for pattern, rep in cta_words:
+            t = re.sub(pattern, rep, t, flags=re.IGNORECASE)
+        # Câu kết nếu chưa có dấu chấm than thì thêm ! để kết dứt khoát
+        if not re.search(r"[.!?…]$", t):
+            t += "!"
+    elif style in ["story", "expressive"]:
+        # Phong cách kể chuyện / diễn cảm: Sâu lắng, ngập ngừng, luyến láy
+        story_words = [
+            (r"\b(ngày xửa ngày xưa|một ngày nọ|bỗng nhiên|thế rồi|sau tất cả|từ sâu thẳm)\b(?!\s*[\.,!?:…—])", r"\1..."),
+            (r"\b(lạ lùng thay|bất ngờ thay|thật không ngờ|không ai ngờ rằng)\b(?!\s*[\.,!?:…—])", r"\1 —"),
+        ]
+        for pattern, rep in story_words:
+            t = re.sub(pattern, rep, t, flags=re.IGNORECASE)
+    elif style == "podcast":
+        # Phong cách podcast đêm / tâm sự: Thư thả, lắng đọng, thêm khoảng thở
+        podcast_words = [
+            (r"\b(đôi khi|có những ngày|bạn biết không|thực ra thì|trong cuộc sống)\b(?!\s*[\.,!?:…—])", r"\1..."),
+            (r"\b(hãy lắng nghe|dành một phút|nghĩ lại xem)\b(?!\s*[\.,!?:…—])", r"\1 [nghỉ:0.5s]"),
+        ]
+        for pattern, rep in podcast_words:
+            t = re.sub(pattern, rep, t, flags=re.IGNORECASE)
+
+    # 4. Tách nhịp tự nhiên cho các câu quá dài (> 16 từ mà không có dấu ngắt nghỉ)
+    def split_long_clauses(match):
+        sent = match.group(0)
+        words = sent.split()
+        if len(words) > 16 and not re.search(r"[,;—…]", sent):
+            sub_clause_pattern = r"\s+(mà|để|nhằm|khiến cho|giúp cho|đồng thời|với mong muốn|trong khi|bởi vì)\s+"
+            sent = re.sub(sub_clause_pattern, r", \1 ", sent, count=1)
+        return sent
+
+    t = re.sub(r"[^.!?…\n]+[.!?…\n]?", split_long_clauses, t)
+
+    # 5. Làm sạch khoảng trắng thừa và dấu câu trùng lặp
+    t = re.sub(r"\s+([.,!?:;])", r"\1", t)
+    t = re.sub(r",\s*,+", ",", t)
+    t = re.sub(r"\.{4,}", "...", t)
+    t = re.sub(r"[ \t]+", " ", t)
+
+    return t.strip()
 
 
 def split_text_into_chunks(text: str, max_words: int = 35) -> List[str]:
@@ -279,9 +466,20 @@ def clean_pitch_shift(audio: np.ndarray, n_steps: float, sr: int = 48000) -> np.
     factor = 2.0 ** (n_steps / 12.0)
 
     try:
-        import librosa
         target_sr = int(round(sr / factor))
-        resampled = librosa.resample(audio, orig_sr=sr, target_sr=target_sr)
+        try:
+            import soxr
+            resampled = soxr.resample(audio, in_rate=sr, out_rate=target_sr, quality="HQ")
+        except Exception:
+            try:
+                import librosa
+                resampled = librosa.resample(audio, orig_sr=sr, target_sr=target_sr)
+            except Exception:
+                from scipy.signal import resample_poly
+                from fractions import Fraction
+                frac = Fraction(target_sr, sr).limit_denominator(100)
+                resampled = resample_poly(audio, frac.numerator, frac.denominator).astype(np.float32)
+
         shifted = wsola_time_stretch(resampled, rate=factor, sr=sr)
     except Exception as e:
         print(f"⚠️ Không thể dịch cao độ giọng: {e}")
@@ -303,13 +501,15 @@ def clean_special_characters(text: str) -> str:
     """Tự động loại bỏ icon, emoji, ký tự lạ để AI không đọc thành tiếng rác."""
     if not text:
         return ""
-    # Bảo vệ các thẻ như [lấy hơi], [nghỉ:0.5s], [thở dài]
+    # Bảo vệ các thẻ như [lấy hơi], [nghỉ:0.5s], [thở dài], [nhấn], **...**
     tags = []
     def save_tag(m):
         tags.append(m.group(0))
         return f"___TAG_{len(tags)-1}___"
 
-    text = re.sub(r"\[(?:ngh[iỉ]|pause|thở|thở dài|lấy hơi|cười|hắng giọng|thì thầm|nghỉ ngắn)[^\]]*\]", save_tag, text, flags=re.IGNORECASE)
+    text = re.sub(r"\[(?:ngh[iỉ]|pause|thở|thở dài|lấy hơi|cười|hắng giọng|thì thầm|nghỉ ngắn|nghỉ dài|nhấn|stress|em)[^\]]*\]", save_tag, text, flags=re.IGNORECASE)
+    text = re.sub(r"\[/(?:nhấn|stress|em)\]", save_tag, text, flags=re.IGNORECASE)
+    text = re.sub(r"\*\*[^*]+\*\*", save_tag, text)
 
     # Loại bỏ emoji unicode
     emoji_pattern = re.compile(
@@ -319,8 +519,8 @@ def clean_special_characters(text: str) -> str:
     )
     text = emoji_pattern.sub(" ", text)
 
-    # Loại bỏ các ký tự rác lạ (@, #, ^, &, *, ~, `, {, }, |, <, >, =)
-    text = re.sub(r"[@#^&*~`|{}<>=_\\]", " ", text)
+    # Loại bỏ các ký tự rác lạ (@, #, ^, &, ~, `, {, }, |, <, >, =) - giữ lại *
+    text = re.sub(r"[@#^&~`|{}<>=_\\]", " ", text)
     # Rút gọn khoảng trắng
     text = re.sub(r"[ \t]+", " ", text).strip()
 
@@ -350,8 +550,11 @@ def build_srt_content(cues: List[Dict[str, Any]]) -> str:
         start = format_srt_time(cue["start"])
         end = format_srt_time(cue["end"])
         text = cue["text"].strip()
-        # Loại bỏ các thẻ điều khiển nội bộ khỏi phụ đề hiển thị
-        clean_sub_text = re.sub(r"\[[^\]]+\]", "", text).strip()
+        # Loại bỏ các thẻ điều khiển nội bộ và thẻ nhấn khỏi phụ đề hiển thị
+        clean_sub_text = re.sub(r"\[(?:nhấn|stress|em(?:phasize)?)\](.*?)\[/(?:nhấn|stress|em(?:phasize)?)\]", r"\1", text, flags=re.IGNORECASE)
+        clean_sub_text = re.sub(r"\[(?:nhấn|stress|em(?:phasize)?):?\s*([^\]]+)\]", r"\1", clean_sub_text, flags=re.IGNORECASE)
+        clean_sub_text = re.sub(r"\*\*([^*]+)\*\*", r"\1", clean_sub_text)
+        clean_sub_text = re.sub(r"\[[^\]]+\]", "", clean_sub_text).strip()
         if not clean_sub_text:
             clean_sub_text = text
         lines.append(f"{i}\n{start} --> {end}\n{clean_sub_text}\n")
@@ -359,56 +562,84 @@ def build_srt_content(cues: List[Dict[str, Any]]) -> str:
 
 
 def split_text_to_subtitles(text: str, max_chars: int = 200) -> List[Dict[str, Any]]:
-    """Chia văn bản thành các câu phụ đề ngắn gọn, tự nhiên theo câu cú và độ dài tối đa."""
+    """Chia văn bản thành các câu phụ đề ngắn gọn, nhận diện mốc nghỉ tùy biến [nghỉ:Xs]."""
     clean = text.strip()
     if not clean:
         return []
 
-    # Chia theo dấu kết thúc câu (. ! ? … \n)
-    raw_sentences = re.split(r"(?<=[.!?…\n])\s+", clean)
-    cues_text = []
+    # Tách văn bản theo các thẻ ngắt nghỉ dạng [nghỉ:0.5s] hoặc [pause:1s]
+    pause_tag_pattern = re.compile(r"(\[(?:ngh[iỉ]|pause):(?:[0-9.]+)s?\])", re.IGNORECASE)
+    parts = pause_tag_pattern.split(clean)
 
-    for s in raw_sentences:
-        s_clean = s.strip()
-        if not s_clean:
+    result: List[Dict[str, Any]] = []
+
+    for part in parts:
+        part_str = part.strip()
+        if not part_str:
             continue
 
-        # Nếu câu quá dài vượt max_chars, chia tiếp theo dấu phẩy / chấm phẩy
-        if len(s_clean) > max_chars:
-            sub_parts = re.split(r"(?<=[,;:])\s+", s_clean)
-            cur = []
-            cur_len = 0
-            for p in sub_parts:
-                p_len = len(p)
-                if cur_len > 0 and (cur_len + p_len > max_chars):
+        pause_match = re.match(r"^\[(?:ngh[iỉ]|pause):([0-9.]+)s?\]$", part_str, flags=re.IGNORECASE)
+        if pause_match:
+            try:
+                pause_sec = float(pause_match.group(1))
+                pause_sec = max(0.05, min(10.0, pause_sec))
+            except (ValueError, TypeError):
+                pause_sec = 0.5
+
+            if result:
+                result[-1]["custom_pause"] = pause_sec
+            else:
+                result.append({
+                    "text": "",
+                    "pause_type": "custom",
+                    "custom_pause": pause_sec,
+                })
+            continue
+
+        # Phần văn bản thông thường
+        raw_sentences = re.split(r"(?<=[.!?…\n])\s+", part_str)
+        cues_text = []
+
+        for s in raw_sentences:
+            s_clean = s.strip()
+            if not s_clean:
+                continue
+
+            if len(s_clean) > max_chars:
+                sub_parts = re.split(r"(?<=[,;:])\s+", s_clean)
+                cur = []
+                cur_len = 0
+                for p in sub_parts:
+                    p_len = len(p)
+                    if cur_len > 0 and (cur_len + p_len > max_chars):
+                        cues_text.append(" ".join(cur))
+                        cur = [p]
+                        cur_len = p_len
+                    else:
+                        cur.append(p)
+                        cur_len += p_len
+                if cur:
                     cues_text.append(" ".join(cur))
-                    cur = [p]
-                    cur_len = p_len
-                else:
-                    cur.append(p)
-                    cur_len += p_len
-            if cur:
-                cues_text.append(" ".join(cur))
-        else:
-            cues_text.append(s_clean)
+            else:
+                cues_text.append(s_clean)
 
-    result = []
-    for item in cues_text:
-        trimmed = item.strip()
-        if not trimmed:
-            continue
-        pause_type = "sentence"
-        if trimmed.endswith((",", ";", ":")):
-            pause_type = "comma"
-        elif trimmed.endswith((".", "!", "?", "…")):
+        for item in cues_text:
+            trimmed = item.strip()
+            if not trimmed:
+                continue
             pause_type = "sentence"
-        else:
-            pause_type = "segment"
+            if trimmed.endswith((",", ";", ":")):
+                pause_type = "comma"
+            elif trimmed.endswith((".", "!", "?", "…")):
+                pause_type = "sentence"
+            else:
+                pause_type = "segment"
 
-        result.append({
-            "text": trimmed,
-            "pause_type": pause_type
-        })
+            result.append({
+                "text": trimmed,
+                "pause_type": pause_type,
+                "custom_pause": None,
+            })
 
     return result
 
@@ -558,7 +789,7 @@ class VoiceCloner:
         temperature: Any = "default",
         pause_style: str = "default",
         comma_pause: float = 0.3,
-        sentence_pause: float = 0.5,
+        sentence_pause: float = 0.3,
         segment_pause: float = 0.3,
         strip_special_chars: bool = False,
         max_chars_per_line: int = 200,
@@ -638,7 +869,14 @@ class VoiceCloner:
 
             for i, cue_item in enumerate(sub_cues):
                 cue_raw_text = cue_item["text"]
+                custom_pause = cue_item.get("custom_pause")
+
+                # Nếu là khối chỉ có thẻ nghỉ (ví dụ đặt [nghỉ:Xs] ngay ở đầu bài)
                 if not cue_raw_text.strip():
+                    if custom_pause and custom_pause > 0:
+                        p_samples = int(custom_pause * self.sample_rate)
+                        audio_segments.append(np.zeros(p_samples, dtype=np.float32))
+                        current_time += custom_pause
                     continue
 
                 # Tạo audio cho phân đoạn câu này
@@ -665,8 +903,10 @@ class VoiceCloner:
 
                 audio_segments.append(seg_audio)
 
-                # Khoảng lặng giữa các câu theo dấu câu
-                if i < len(sub_cues) - 1:
+                # Khoảng lặng giữa các câu: ưu tiên custom_pause nếu có thẻ [nghỉ:Xs]
+                if custom_pause is not None:
+                    p_sec = custom_pause
+                elif i < len(sub_cues) - 1:
                     p_type = cue_item["pause_type"]
                     if p_type == "comma":
                         p_sec = comma_pause
@@ -674,7 +914,10 @@ class VoiceCloner:
                         p_sec = sentence_pause
                     else:
                         p_sec = segment_pause
+                else:
+                    p_sec = 0.0
 
+                if p_sec > 0:
                     p_samples = int(p_sec * self.sample_rate)
                     if p_samples > 0:
                         audio_segments.append(np.zeros(p_samples, dtype=np.float32))

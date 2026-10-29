@@ -314,6 +314,190 @@
       transform: translateY(-1px);
     }
 
+    .magic-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 32px;
+      padding: 0 13px;
+      border-radius: 9px;
+      font-size: 11.5px;
+      font-weight: 750;
+      color: #fff;
+      background: linear-gradient(135deg, #7c3aed, #2563eb);
+      border: 1px solid rgba(167, 139, 250, 0.45);
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(124, 58, 237, 0.3);
+      transition: all .18s ease;
+      white-space: nowrap;
+    }
+
+    .magic-btn:hover {
+      background: linear-gradient(135deg, #9333ea, #1d4ed8);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(124, 58, 237, 0.45);
+    }
+
+    .phrasing-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      width: 300px;
+      background: #0f192b;
+      border: 1px solid #273b5a;
+      border-radius: 12px;
+      box-shadow: 0 16px 42px rgba(0, 0, 0, 0.65);
+      padding: 8px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      animation: fadeInDropdown .16s ease-out;
+    }
+
+    @keyframes fadeInDropdown {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .phrasing-menu-header {
+      font-size: 10.5px;
+      font-weight: 750;
+      color: #94a3b8;
+      padding: 4px 8px 6px;
+      border-bottom: 1px solid #1c2b42;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .phrasing-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: transparent;
+      border: none;
+      color: #e2e8f0;
+      text-align: left;
+      cursor: pointer;
+      transition: background .15s ease;
+      width: 100%;
+    }
+
+    .phrasing-option:hover {
+      background: #19263c;
+    }
+
+    .phrasing-option .p-icon {
+      font-size: 16px;
+      line-height: 1.2;
+    }
+
+    .phrasing-option strong {
+      display: block;
+      font-size: 12px;
+      color: #52e0bd;
+    }
+
+    .phrasing-option small {
+      display: block;
+      font-size: 10.5px;
+      color: #94a3b8;
+      line-height: 1.35;
+      margin-top: 2px;
+    }
+
+    .phrasing-option.selected {
+      background: rgba(82, 224, 189, 0.12);
+      border: 1px solid rgba(82, 224, 189, 0.4);
+    }
+
+    .highlight-btn {
+      color: #fde68a !important;
+      background: rgba(245, 158, 11, 0.16) !important;
+      border-color: rgba(245, 158, 11, 0.4) !important;
+    }
+    .highlight-btn:hover {
+      background: rgba(245, 158, 11, 0.28) !important;
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
+    }
+
+    .active-style-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 7px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #52e0bd;
+      background: rgba(82, 224, 189, 0.15);
+      border: 1px solid rgba(82, 224, 189, 0.35);
+      white-space: nowrap;
+      animation: fadeInDropdown .2s ease-out;
+    }
+
+    /* Pro Tips Box */
+    .pro-tips-card {
+      margin-top: 10px;
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      overflow: hidden;
+      transition: border-color .15s;
+    }
+
+    .pro-tips-card:hover {
+      border-color: #334155;
+    }
+
+    .tips-header {
+      padding: 8px 12px;
+      font-size: 11px;
+      color: #94a3b8;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+      background: rgba(30, 41, 59, 0.35);
+    }
+
+    .tips-header:hover {
+      color: #cbd5e1;
+    }
+
+    .tips-body {
+      padding: 12px 14px;
+      border-top: 1px solid #1e293b;
+      font-size: 11.5px;
+      color: #cbd5e1;
+    }
+
+    .tips-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 10px;
+    }
+
+    .tip-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      line-height: 1.45;
+    }
+
+    .tip-item code {
+      background: #1e293b;
+      color: #38bdf8;
+      padding: 1px 6px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-family: monospace;
+      white-space: nowrap;
+    }
+
     /* Normalization Bar */
     .norm-bar {
       margin-top: 14px;
@@ -1176,7 +1360,37 @@
             <div
               style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
               <label for="text" style="margin:0;">Văn bản Tiếng Việt</label>
-              <div style="display:flex; gap:8px;">
+              <div style="display:flex; gap:8px; align-items:center;">
+                <!-- NÚT MA THUẬT NHẤN NHÁ TỰ ĐỘNG -->
+                <div style="position:relative; display:inline-block;">
+                  <button type="button" id="autoPhrasingBtn" class="magic-btn" onclick="togglePhrasingMenu(event)"
+                    title="AI tự động phân tích và thêm dấu câu, nhịp thở, lấy hơi và nhấn nhá câu từ cực hay">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></svg>
+                    <span id="phrasingBtnText">Nhấn nhá tự động</span>
+                    <span id="phrasingBtnArrow" style="font-size:9px; margin-left:3px;">▼</span>
+                  </button>
+                  <div id="phrasingMenu" class="phrasing-menu" style="display:none;">
+                    <div class="phrasing-menu-header">Chọn phong cách nhấn nhá AI:</div>
+                    <button type="button" class="phrasing-option" data-style="natural" onclick="applySmartPhrasing('natural', 'Tự nhiên & Cân bằng')">
+                      <span class="p-icon">🌿</span>
+                      <div><strong>Tự nhiên & Cân bằng</strong><small>Lấy hơi đầu câu, ngắt nhịp liên từ, mượt mà</small></div>
+                    </button>
+                    <button type="button" class="phrasing-option" data-style="sales" onclick="applySmartPhrasing('sales', 'Bán hàng / TikTok')">
+                      <span class="p-icon">📢</span>
+                      <div><strong>Quảng cáo / Bán hàng / TikTok</strong><small>Hào hứng, dồn dập, nhấn mạnh KOC/KOL & con số</small></div>
+                    </button>
+                    <button type="button" class="phrasing-option" data-style="story" onclick="applySmartPhrasing('story', 'Kể chuyện / Diễn cảm')">
+                      <span class="p-icon">🎙️</span>
+                      <div><strong>Kể chuyện / Diễn cảm</strong><small>Sâu lắng, luyến láy ba chấm (...), ngắt vế kịch tính</small></div>
+                    </button>
+                    <button type="button" class="phrasing-option" data-style="podcast" onclick="applySmartPhrasing('podcast', 'Tâm sự / Podcast')">
+                      <span class="p-icon">🌙</span>
+                      <div><strong>Tâm sự / Podcast đêm</strong><small>Thư thả, khoảng lặng [nghỉ:0.3s], thở dài nhẹ nhàng</small></div>
+                    </button>
+                  </div>
+                </div>
+                <span id="activeStyleBadge" class="active-style-badge" style="display:none;"></span>
+
                 <button type="button" id="importScriptBtn" class="dict-btn"
                   title="Tải lên file văn bản .txt hoặc file phụ đề .srt để AI đọc">
                   📁 Nhập kịch bản (.txt, .srt)
@@ -1199,17 +1413,61 @@
 
             <!-- Thanh chèn thẻ cảm xúc & nhịp thở -->
             <div class="emotion-bar">
-              <span class="emotion-title">Chèn hơi thở & ngắt nghỉ:</span>
-              <button type="button" class="emotion-btn" onclick="insertEmotionTag('[lấy hơi]')">🌬️ [lấy hơi]</button>
-              <button type="button" class="emotion-btn" onclick="insertEmotionTag('[thở dài]')">💨 [thở dài]</button>
-              <button type="button" class="emotion-btn" onclick="insertEmotionTag('[nghỉ:0.5s]')">⏸️ [nghỉ
-                0.5s]</button>
-              <button type="button" class="emotion-btn" onclick="insertEmotionTag('[nghỉ:1s]')">⏹️ [nghỉ 1s]</button>
-              <button type="button" class="emotion-btn" onclick="insertEmotionTag('[cười]')">😊 [cười]</button>
-              <button type="button" class="emotion-btn" onclick="insertEmotionTag('[hắng giọng]')">🗣️ [hắng
-                giọng]</button>
-              <button type="button" class="emotion-btn" onclick="insertEmotionTag('[thì thầm]')">🤫 [thì thầm]</button>
-              <button type="button" class="emotion-btn" onclick="insertEmotionTag('[nghỉ ngắn]')">⚡ [nghỉ ngắn]</button>
+              <span class="emotion-title">Nhấn nhá & Cảm xúc:</span>
+              <button type="button" class="emotion-btn highlight-btn" onclick="wrapEmphasisTag()"
+                title="Bôi đen chữ rồi bấm để AI dồn trọng âm vào từ khóa">⚡ [nhấn mạnh]</button>
+              <button type="button" class="emotion-btn" onclick="insertEmotionTag('[lấy hơi]')"
+                title="Tiếng hít thở chân thực của MC mở đầu câu">🌬️ [lấy hơi]</button>
+              <button type="button" class="emotion-btn" onclick="insertEmotionTag('[cười]')"
+                title="Tiếng cười mỉm tự nhiên">😊 [cười]</button>
+              <button type="button" class="emotion-btn" onclick="insertEmotionTag('[thở dài]')"
+                title="Thở dài sâu lắng">💨 [thở dài]</button>
+              <button type="button" class="emotion-btn" onclick="insertEmotionTag('[hắng giọng]')"
+                title="Hắng giọng mở đầu câu chuyện">🗣️ [hắng giọng]</button>
+              <button type="button" class="emotion-btn" onclick="insertEmotionTag('[nghỉ:0.5s]')"
+                title="Chèn chính xác 0.5 giây khoảng lặng">⏸️ [nghỉ 0.5s]</button>
+              <button type="button" class="emotion-btn" onclick="insertEmotionTag('[nghỉ:1s]')"
+                title="Chèn chính xác 1.0 giây khoảng lặng">⏹️ [nghỉ 1s]</button>
+              <button type="button" class="emotion-btn" onclick="insertEmotionTag(' ... ')"
+                title="Ngập ngừng, luyến láy ngân dài">〰️ ... (luyến)</button>
+              <button type="button" class="emotion-btn" onclick="insertEmotionTag(' — ')"
+                title="Ngắt vế kịch tính trước khi nhấn">➖ — (ngắt vế)</button>
+            </div>
+
+            <!-- Khối bí quyết nhấn nhá MC -->
+            <div class="pro-tips-card">
+              <div class="tips-header" onclick="toggleTipsBox()">
+                <span>💡 <strong>Bí quyết viết kịch bản nhấn nhá hay như Voice Talent chuyên nghiệp</strong></span>
+                <span id="tipsArrow">▼</span>
+              </div>
+              <div id="tipsBody" class="tips-body" style="display:none;">
+                <div class="tips-grid">
+                  <div class="tip-item">
+                    <code>...</code>
+                    <span>Tạo độ luyến láy, ngập ngừng, ngân nhẹ âm cuối. Ví dụ: <em>"Bởi vì... tôi luôn tin bạn."</em></span>
+                  </div>
+                  <div class="tip-item">
+                    <code> — </code>
+                    <span>Tạo khoảng ngắt kịch tính để dồn lực vào vế sau. Ví dụ: <em>"Một giải pháp hoàn toàn mới — giúp tăng doanh số!"</em></span>
+                  </div>
+                  <div class="tip-item">
+                    <code>[nhấn]...[/nhấn]</code>
+                    <span>Dồn trọng âm vào từ khóa. Ví dụ: <em>"Cơ hội <strong>[nhấn]lớn nhất năm[/nhấn]</strong>!"</em></span>
+                  </div>
+                  <div class="tip-item">
+                    <code>[lấy hơi]</code>
+                    <span>Tạo tiếng hít thở mở màn chân thực ở đầu câu chào hoặc sau các câu dài.</span>
+                  </div>
+                  <div class="tip-item">
+                    <code>[nghỉ:0.5s]</code>
+                    <span>Chèn khoảng lặng vật lý chính xác (0.2s - 5s) và đồng bộ phụ đề tuyệt đối.</span>
+                  </div>
+                  <div class="tip-item">
+                    <code>!</code> và <code>?</code>
+                    <span>Dấu hỏi giúp AI lên giọng cuối câu; dấu chấm than giúp dứt khoát hào sảng.</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1218,7 +1476,7 @@
             <label class="norm-label" for="normalizeTextToggle">
               <input type="checkbox" id="normalizeTextToggle" name="normalize_text" checked
                 style="width: 16px; height: 16px; accent-color: #52e0bd; cursor: pointer;">
-              <span>⚡ Tự động chuẩn hóa số tiền (50k → 50 nghìn), SĐT, ngày tháng & từ viết tắt (AI, FB, Zalo...)</span>
+              <span>⚡ Chuẩn hóa phát âm thông minh: Đọc từng chữ cái tiếng Anh cho từ IN HOA (KOC, KOL, AI, FB...), tiền tệ (50k → 50 nghìn), SĐT, ngày tháng</span>
             </label>
             <button type="button" id="openDictBtn" class="dict-btn">⚙️ Từ điển phát âm</button>
           </div>
@@ -1670,9 +1928,9 @@
           </div>
           <div>
             <label for="advSentencePause">Ngắt âm dấu chấm [. ! ?] (giây)</label>
-            <input type="number" id="advSentencePause" min="0.0" max="3.0" step="0.05" value="0.50"
+            <input type="number" id="advSentencePause" min="0.0" max="3.0" step="0.05" value="0.30"
               style="height:38px;">
-            <div style="font-size:10px; color:#78879d; margin-top:4px;">Mặc định: 0.5s (kết thúc câu trọn vẹn)</div>
+            <div style="font-size:10px; color:#78879d; margin-top:4px;">Mặc định: 0.3s (kết thúc câu trọn vẹn, nhịp nhanh tự nhiên)</div>
           </div>
         </div>
 
@@ -1804,13 +2062,16 @@
       const defaults = {
         segment_pause: 0.30,
         comma_pause: 0.30,
-        sentence_pause: 0.50,
+        sentence_pause: 0.30,
         strip_special_chars: false,
         max_chars_per_line: 200,
         generate_srt: true,
       };
       try {
         const stored = JSON.parse(localStorage.getItem("voice_advance_settings") || "{}");
+        if (stored.sentence_pause === 0.5 || stored.sentence_pause === 0.50 || stored.sentence_pause === undefined) {
+          stored.sentence_pause = 0.30;
+        }
         return { ...defaults, ...stored };
       } catch {
         return defaults;
@@ -1840,7 +2101,7 @@
       const settings = {
         segment_pause: parseFloat(document.getElementById("advSegmentPause").value) || 0.30,
         comma_pause: parseFloat(document.getElementById("advCommaPause").value) || 0.30,
-        sentence_pause: parseFloat(document.getElementById("advSentencePause").value) || 0.50,
+        sentence_pause: parseFloat(document.getElementById("advSentencePause").value) || 0.30,
         strip_special_chars: document.getElementById("advStripSpecial").checked,
         max_chars_per_line: parseInt(document.getElementById("advMaxChars").value, 10) || 200,
         generate_srt: document.getElementById("advGenerateSrt").checked,
@@ -1853,7 +2114,7 @@
     window.resetAdvanceSettingsToDefault = function () {
       document.getElementById("advSegmentPause").value = 0.30;
       document.getElementById("advCommaPause").value = 0.30;
-      document.getElementById("advSentencePause").value = 0.50;
+      document.getElementById("advSentencePause").value = 0.30;
       document.getElementById("advStripSpecial").checked = false;
       document.getElementById("advMaxChars").value = 200;
       document.getElementById("advGenerateSrt").checked = true;
@@ -2002,7 +2263,7 @@
               temperature: emotionSelect.value,
               pause_style: pauseSelect.value || "default",
               comma_pause: parseFloat(adv.comma_pause) || 0.30,
-              sentence_pause: parseFloat(adv.sentence_pause) || 0.50,
+              sentence_pause: parseFloat(adv.sentence_pause) || 0.30,
               segment_pause: parseFloat(adv.segment_pause) || 0.30,
               strip_special_chars: !!adv.strip_special_chars,
               normalize_text: normalizeTextToggle ? normalizeTextToggle.checked : true,
@@ -2360,6 +2621,127 @@
       textInput.dispatchEvent(new Event("input"));
     };
 
+    window.wrapEmphasisTag = function () {
+      const start = textInput.selectionStart;
+      const end = textInput.selectionEnd;
+      const val = textInput.value;
+      if (start !== end) {
+        const selected = val.substring(start, end).trim();
+        const before = val.substring(0, start);
+        const after = val.substring(end);
+        const replacement = ` [nhấn]${selected}[/nhấn] `;
+        textInput.value = before + replacement + after;
+        const newPos = start + replacement.length;
+        textInput.focus();
+        textInput.setSelectionRange(newPos, newPos);
+        textInput.dispatchEvent(new Event("input"));
+        showNotice(`⚡ Đã nhấn mạnh cụm từ "${selected}"!`, "success");
+      } else {
+        insertEmotionTag("[nhấn]từ khóa[/nhấn]");
+      }
+    };
+
+    window.togglePhrasingMenu = function (e) {
+      if (e) e.stopPropagation();
+      const menu = document.getElementById("phrasingMenu");
+      if (menu) {
+        menu.style.display = menu.style.display === "none" ? "flex" : "none";
+      }
+    };
+
+    document.addEventListener("click", (e) => {
+      const menu = document.getElementById("phrasingMenu");
+      const btn = document.getElementById("autoPhrasingBtn");
+      if (menu && menu.style.display !== "none") {
+        if (!menu.contains(e.target) && !btn.contains(e.target)) {
+          menu.style.display = "none";
+        }
+      }
+    });
+
+    window.toggleTipsBox = function () {
+      const body = document.getElementById("tipsBody");
+      const arrow = document.getElementById("tipsArrow");
+      if (body) {
+        const isHidden = body.style.display === "none";
+        body.style.display = isHidden ? "block" : "none";
+        arrow.textContent = isHidden ? "▲" : "▼";
+      }
+    };
+
+    const SAMPLE_SCRIPTS = {
+      sales: "[lấy hơi] Chào mọi người! Hôm nay mình sẽ chia sẻ cách các KOC và KOL triệu view bùng nổ doanh số với chiến dịch TikTok Shop — [nhấn]cực kỳ đơn giản[/nhấn] nhưng hiệu quả tăng gấp 3 lần! Đừng bỏ lỡ!",
+      natural: "[lấy hơi] Xin chào quý vị và các bạn. Chào mừng mọi người đã quay trở lại với bản tin hôm nay. Đặc biệt là các cập nhật mới nhất về AI và chiến lược truyền thông đa kênh.",
+      story: "[lấy hơi] Ngày xửa ngày xưa... giữa khu rừng bạt ngàn... có một ngôi làng nhỏ quanh năm bao phủ trong sương mù. Thế rồi — một buổi sớm mai, điều bất ngờ nhất đã xuất hiện...",
+      podcast: "[lấy hơi] Đôi khi trong cuộc sống... chúng ta quá bận rộn chạy theo những mục tiêu... mà quên mất việc lắng nghe chính bản thân mình. [nghỉ:0.3s] Tối nay, hãy dành một phút tĩnh lặng cùng nhau nhé."
+    };
+
+    window.clearActiveStyle = function (e) {
+      if (e) e.stopPropagation();
+      const phrasingBtnText = document.getElementById("phrasingBtnText");
+      const activeStyleBadge = document.getElementById("activeStyleBadge");
+      if (phrasingBtnText) phrasingBtnText.textContent = "Nhấn nhá tự động";
+      if (activeStyleBadge) activeStyleBadge.style.display = "none";
+      document.querySelectorAll(".phrasing-option").forEach(el => el.classList.remove("selected"));
+      showNotice("Đã đặt lại phong cách nhấn nhá.", "info");
+    };
+
+    window.applySmartPhrasing = async function (style, styleName) {
+      const menu = document.getElementById("phrasingMenu");
+      if (menu) menu.style.display = "none";
+
+      const label = styleName || (style === "sales" ? "Bán hàng / TikTok" : style === "story" ? "Kể chuyện / Diễn cảm" : style === "podcast" ? "Tâm sự / Podcast" : "Tự nhiên & Cân bằng");
+
+      // Cập nhật hiển thị nhãn nút bấm & huy hiệu nổi bật trên màn hình
+      const phrasingBtnText = document.getElementById("phrasingBtnText");
+      if (phrasingBtnText) phrasingBtnText.textContent = label;
+
+      const activeStyleBadge = document.getElementById("activeStyleBadge");
+      if (activeStyleBadge) {
+        activeStyleBadge.innerHTML = `✓ Đang chọn: <strong>${label}</strong> <span style="cursor:pointer;margin-left:5px;font-size:12px;opacity:0.8;" onclick="clearActiveStyle(event)" title="Hủy chọn phong cách">✕</span>`;
+        activeStyleBadge.style.display = "inline-flex";
+      }
+
+      // Đánh dấu active trong menu
+      document.querySelectorAll(".phrasing-option").forEach(el => {
+        el.classList.toggle("selected", el.getAttribute("data-style") === style);
+      });
+
+      const currentText = textInput.value.trim();
+
+      // Nếu ô nhập rỗng -> tự động nạp kịch bản mẫu tương ứng phong cách lên màn hình ngay để người dùng thấy và test thử
+      if (!currentText) {
+        const sample = SAMPLE_SCRIPTS[style] || SAMPLE_SCRIPTS.natural;
+        textInput.value = sample;
+        textInput.dispatchEvent(new Event("input"));
+        textInput.focus();
+        showNotice(`✨ Đã chọn phong cách "${label}" & nạp văn bản mẫu lên màn hình!`, "success");
+        return;
+      }
+
+      // Nếu đã có văn bản -> gọi AI tối ưu dấu câu, nhịp thở và nhấn nhá
+      showNotice(`⏳ Đang tối ưu nhấn nhá theo phong cách "${label}"...`, "info");
+
+      try {
+        const res = await fetch("/api/auto-phrasing", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: currentText, style: style }),
+        });
+        const data = await res.json();
+        if (data && data.status === "ok" && data.enhanced_text) {
+          textInput.value = data.enhanced_text;
+          textInput.dispatchEvent(new Event("input"));
+          textInput.focus();
+          showNotice(`✨ Đã tối ưu văn bản theo phong cách "${label}" thành công!`, "success");
+        } else {
+          showNotice("⚠️ Không thể nhấn nhá tự động.", "error");
+        }
+      } catch (err) {
+        showNotice("⚠️ Lỗi kết nối khi nhấn nhá: " + err.message, "error");
+      }
+    };
+
     textInput.addEventListener("input", () => {
       const text = textInput.value;
       const words = text.trim() ? text.trim().split(/\s+/).length : 0;
@@ -2501,7 +2883,7 @@
             temperature: emotionSelect.value,
             pause_style: pauseSelect.value || "default",
             comma_pause: parseFloat(adv.comma_pause) || 0.30,
-            sentence_pause: parseFloat(adv.sentence_pause) || 0.50,
+            sentence_pause: parseFloat(adv.sentence_pause) || 0.30,
             segment_pause: parseFloat(adv.segment_pause) || 0.30,
             strip_special_chars: !!adv.strip_special_chars,
             max_chars_per_line: parseInt(adv.max_chars_per_line, 10) || 200,

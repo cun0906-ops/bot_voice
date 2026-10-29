@@ -240,7 +240,7 @@ class SynthesisRequest(BaseModel):
     temperature: Any = "default"
     pause_style: str = "default"
     comma_pause: float = 0.3
-    sentence_pause: float = 0.5
+    sentence_pause: float = 0.3
     segment_pause: float = 0.3
     strip_special_chars: bool = False
     max_chars_per_line: int = 200
@@ -428,17 +428,23 @@ async def clone_new_voice(
         import librosa
 
         try:
-            wav, sr = librosa.load(str(temp_path), sr=48000, mono=True)
-        except Exception as load_err:
-            # Fallback 1: Thử đọc trực tiếp bằng soundfile
+            wav, sr = sf.read(str(temp_path), dtype="float32")
+            if getattr(wav, "ndim", 1) > 1:
+                wav = wav.mean(axis=1)
+            if sr != 48000:
+                try:
+                    import soxr
+                    wav = soxr.resample(wav, in_rate=sr, out_rate=48000)
+                except Exception:
+                    from scipy.signal import resample_poly
+                    from fractions import Fraction
+                    frac = Fraction(48000, sr).limit_denominator(100)
+                    wav = resample_poly(wav, frac.numerator, frac.denominator).astype(np.float32)
+        except Exception:
             try:
-                wav, sr = sf.read(str(temp_path), dtype="float32")
-                if getattr(wav, "ndim", 1) > 1:
-                    wav = wav.mean(axis=1)
-                if sr != 48000:
-                    wav = librosa.resample(wav, orig_sr=sr, target_sr=48000)
-            except Exception:
-                # Fallback 2: Thử đọc bằng pydub
+                import librosa
+                wav, sr = librosa.load(str(temp_path), sr=48000, mono=True)
+            except Exception as load_err:
                 try:
                     from pydub import AudioSegment
                     seg = AudioSegment.from_file(str(temp_path))
@@ -743,6 +749,21 @@ async def parse_script_file(file: UploadFile = File(...)):
         clean_text = text.strip()
 
     return {"status": "ok", "text": clean_text, "filename": file.filename}
+
+
+class AutoPhrasingRequest(BaseModel):
+    text: str
+    style: str = "natural"
+
+
+@app.post("/api/auto-phrasing")
+def auto_phrasing_api(req: AutoPhrasingRequest):
+    """Tự động phân tích và thêm các thẻ lấy hơi, ngắt nhịp và nhấn nhá câu từ."""
+    if not req.text or not req.text.strip():
+        return {"status": "ok", "enhanced_text": ""}
+    from tts_engine import apply_auto_phrasing
+    enhanced = apply_auto_phrasing(req.text, style=req.style)
+    return {"status": "ok", "enhanced_text": enhanced}
 
 
 def extract_preview_text(full_text: str, max_words: int = 35) -> str:

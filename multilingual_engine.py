@@ -129,6 +129,14 @@ async def generate_multilingual_speech(
     if not clean_text:
         raise ValueError("Nội dung văn bản không được để trống.")
 
+    # Xử lý các thẻ nhấn nhá và ngắt nghỉ tự nhiên cho giọng quốc tế
+    clean_text = re.sub(r"\[(?:nhấn|stress|em(?:phasize)?):?\s*([^\]]+)\]", r" ... \1 — ", clean_text, flags=re.IGNORECASE)
+    clean_text = re.sub(r"\[(?:nhấn|stress|em(?:phasize)?)\](.*?)\[/(?:nhấn|stress|em(?:phasize)?)\]", r" ... \1 — ", clean_text, flags=re.IGNORECASE)
+    clean_text = re.sub(r"\*\*([^*]+)\*\*", r" ... \1 — ", clean_text)
+    clean_text = re.sub(r"\[(?:ngh[iỉ]|pause):[0-9.]+s?\]", " ... ", clean_text, flags=re.IGNORECASE)
+    clean_text = re.sub(r"\[(?:lấy hơi|thở|thở dài|cười|hắng giọng|thì thầm|nghỉ ngắn|nghỉ dài)\]", " ... ", clean_text, flags=re.IGNORECASE)
+    clean_text = re.sub(r"[ \t]+", " ", clean_text).strip()
+
     # Tính toán rate và pitch cho SSML Edge-TTS
     # speed: 1.0 -> "+0%"; 1.2 -> "+20%"; 0.8 -> "-20%"
     speed_percent = int(round((speed - 1.0) * 100))
@@ -193,19 +201,35 @@ async def generate_multilingual_speech(
 
     # Chuyển đổi MP3 sang file WAV 48kHz High-Res PCM 16-bit chuẩn chỉnh
     import soundfile as sf
-    import librosa
     import numpy as np
 
+    wav = None
     try:
-        wav, sr = librosa.load(str(temp_mp3), sr=48000, mono=True)
+        # Thử đọc trực tiếp bằng soundfile (libsndfile hiện đại hỗ trợ mp3)
+        wav, sr = sf.read(str(temp_mp3), dtype="float32")
+        if getattr(wav, "ndim", 1) > 1:
+            wav = wav.mean(axis=1)
+        if sr != 48000:
+            try:
+                import soxr
+                wav = soxr.resample(wav, sr, 48000)
+            except Exception:
+                from scipy.signal import resample_poly
+                from fractions import Fraction
+                frac = Fraction(48000, sr).limit_denominator(100)
+                wav = resample_poly(wav, frac.numerator, frac.denominator).astype(np.float32)
     except Exception:
-        from pydub import AudioSegment
-        seg = AudioSegment.from_file(str(temp_mp3))
-        seg = seg.set_frame_rate(48000).set_channels(1)
-        buf = io.BytesIO()
-        seg.export(buf, format="wav")
-        buf.seek(0)
-        wav, sr = sf.read(buf, dtype="float32")
+        try:
+            import librosa
+            wav, sr = librosa.load(str(temp_mp3), sr=48000, mono=True)
+        except Exception:
+            from pydub import AudioSegment
+            seg = AudioSegment.from_file(str(temp_mp3))
+            seg = seg.set_frame_rate(48000).set_channels(1)
+            buf = io.BytesIO()
+            seg.export(buf, format="wav")
+            buf.seek(0)
+            wav, sr = sf.read(buf, dtype="float32")
 
     # Speaker Boost & Khử rung
     if len(wav) > 0:

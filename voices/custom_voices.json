@@ -19,7 +19,7 @@
     "region": "Bắc",
     "category": "Giọng Clone Của Bạn",
     "is_clone": true,
-    "audio_path": "D:\\bot_voice\\voices\\custom\\custom_maitu_15e8dc.wav",
+    "audio_path": "voices/custom/custom_maitu_15e8dc.wav",
     "ref_text": "",
     "is_builtin": false,
     "created_at": "15:33 17/10/2026"
